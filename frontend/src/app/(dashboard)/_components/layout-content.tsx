@@ -61,12 +61,12 @@ export default function DashboardLayoutContent({
     return () => clearInterval(interval);
   }, []);
 
-  // Check authentication status
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/auth');
-    }
-  }, [user, isLoading, router]);
+  // Check authentication status - DISABLED
+  // useEffect(() => {
+  //   if (!isLoading && !user) {
+  //     router.push('/auth');
+  //   }
+  // }, [user, isLoading, router]);
 
   if (maintenanceNotice.enabled) {
     const now = new Date();
@@ -103,10 +103,10 @@ export default function DashboardLayoutContent({
     );
   }
 
-  // Don't render anything if not authenticated
-  if (!user) {
-    return null;
-  }
+  // Don't render anything if not authenticated - DISABLED
+  // if (!user) {
+  //   return null;
+  // }
 
   // Show maintenance page if API is not healthy
   if (!isApiHealthy) {

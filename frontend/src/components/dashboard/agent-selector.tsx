@@ -50,7 +50,7 @@ export function AgentSelector({
     ? agents.find(agent => agent.agent_id === selectedAgentId)
     : null;
 
-  const displayName = currentAgent?.name || defaultAgent?.name || 'Suna';
+  const displayName = currentAgent?.name || defaultAgent?.name || 'Bjarke';
   const agentAvatar = currentAgent?.avatar;
   const isUsingSuna = !currentAgent && !defaultAgent;
 
@@ -79,7 +79,7 @@ export function AgentSelector({
       return (
         <div className={cn("flex items-center", className)}>
           <span className="tracking-tight text-4xl font-semibold leading-tight text-primary">
-            Suna
+            Bjarke
           </span>
         </div>
       );
@@ -145,7 +145,7 @@ export function AgentSelector({
                 <div className="flex items-center gap-2 w-full">
                   <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex items-center gap-1 flex-1 min-w-0">
-                    <span className="font-medium truncate">Suna</span>
+                    <span className="font-medium truncate">Adrian</span>
                     <Badge variant="outline" className="text-xs px-1 py-0 flex-shrink-0">
                       Default
                     </Badge>
@@ -258,7 +258,7 @@ export function AgentSelector({
               <div className="flex items-center gap-2 w-full">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <div className="flex items-center gap-1 flex-1">
-                  <span className="font-medium">Suna</span>
+                  <span className="font-medium">Bjarke</span>
                   <Badge variant="outline" className="text-xs px-1 py-0">
                     Default
                   </Badge>
