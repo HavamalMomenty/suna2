@@ -433,7 +433,7 @@ export function ToolCallSidePanel({
                 <div className="ml-2 flex items-center gap-2">
                   <Computer className="h-4 w-4" />
                   <h2 className="text-md font-medium text-zinc-900 dark:text-zinc-100">
-                    {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'}
+                    {agentName ? `${agentName}'s Computer` : 'Node\'s Computer'}
                   </h2>
                 </div>
                 <Button
@@ -469,7 +469,7 @@ export function ToolCallSidePanel({
               <div className="ml-2 flex items-center gap-2">
                 <Computer className="h-4 w-4" />
                 <h2 className="text-md font-medium text-zinc-900 dark:text-zinc-100">
-                  {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'}
+                  {agentName ? `${agentName}'s Computer` : 'Node\'s Computer'}
                 </h2>
               </div>
               <Button
@@ -516,7 +516,7 @@ export function ToolCallSidePanel({
                 <div className="ml-2 flex items-center gap-2">
                   <Computer className="h-4 w-4" />
                   <h2 className="text-md font-medium text-zinc-900 dark:text-zinc-100">
-                    {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'}
+                    {agentName ? `${agentName}'s Computer` : 'Node\'s Computer'}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -563,7 +563,7 @@ export function ToolCallSidePanel({
               <div className="ml-2 flex items-center gap-2">
                 <Computer className="h-4 w-4" />
                 <h2 className="text-md font-medium text-zinc-900 dark:text-zinc-100">
-                  {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'}
+                  {agentName ? `${agentName}'s Computer` : 'Node\'s Computer'}
                 </h2>
               </div>
               <Button
@@ -611,7 +611,7 @@ export function ToolCallSidePanel({
             <div className="ml-2 flex items-center gap-2">
               <Computer className="h-4 w-4" />
               <h2 className="text-md font-medium text-zinc-900 dark:text-zinc-100">
-                {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'}
+                {agentName ? `${agentName}'s Computer` : 'Node\'s Computer'}
               </h2>
             </div>
 

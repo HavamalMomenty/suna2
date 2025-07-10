@@ -39,16 +39,8 @@ const allPrompts: PromptExample[] = [
     query: 'Act as an experienced private equity real estate analyst specializing in Danish assets: review all documents. including spreadsheets, PDFs and supporting files, and extract, analyze. Included are the following documents. The point of the IC is not to "sell" the property, acts as an objective investigator. An example of a correctly produced IC for another property.',
     icon: <BarChart3 className="text-green-700 dark:text-green-400" size={16} />,
   },
-  {
-    title: 'Real estate research in N and AA',
-    query: 'Investigate all for sale units in Næstved and Aabenraa and find the best cases to invest in.',
-    icon: <Bot className="text-blue-700 dark:text-blue-400" size={16} />,
-  },
-  {
-    title: 'Make a funny analysis of Bjarke Erichsen',
-    query: 'Make a funny analysis of Bjarke Erichsen',
-    icon: <Bot className="text-blue-700 dark:text-blue-400" size={16} />,
-  },
+
+
 
 ];
 
