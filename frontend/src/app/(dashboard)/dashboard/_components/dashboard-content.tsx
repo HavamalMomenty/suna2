@@ -31,26 +31,27 @@ import { useModal } from '@/hooks/use-modal-store';
 import { Examples } from './suggestions/examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { toast } from 'sonner';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
 export function DashboardContent() {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWorkflowLoading, setIsWorkflowLoading] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(null);
+
   const { billingError, handleBillingError, clearBillingError } =
     useBillingError();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { onOpen } = useModal();
+  const { setOpen: setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
-  const { setOpenMobile } = useSidebar();
-  const { data: accounts } = useAccounts();
-  const personalAccount = accounts?.find((account) => account.personal_account);
   const chatInputRef = useRef<ChatInputHandles>(null);
   const initiateAgentMutation = useInitiateAgentWithInvalidation();
-  const { onOpen } = useModal();
 
   const threadQuery = useThreadQuery(initiatedThreadId || '');
 
@@ -67,7 +68,6 @@ export function DashboardContent() {
   useEffect(() => {
     if (threadQuery.data && initiatedThreadId) {
       const thread = threadQuery.data;
-      console.log('Thread data received:', thread);
       if (thread.project_id) {
         router.push(`/projects/${thread.project_id}/thread/${initiatedThreadId}`);
       } else {
@@ -76,9 +76,6 @@ export function DashboardContent() {
       setInitiatedThreadId(null);
     }
   }, [threadQuery.data, initiatedThreadId, router]);
-
-  const secondaryGradient =
-    'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
   const handleSubmit = async (
     message: string,
@@ -105,14 +102,12 @@ export function DashboardContent() {
       const formData = new FormData();
       formData.append('prompt', message);
 
-      // Add selected agent if one is chosen
       if (selectedAgentId) {
         formData.append('agent_id', selectedAgentId);
       }
 
-      files.forEach((file, index) => {
-        const normalizedName = normalizeFilenameToNFC(file.name);
-        formData.append('files', file, normalizedName);
+      files.forEach((file) => {
+        formData.append(`files`, file);
       });
 
       if (options?.model_name) formData.append('model_name', options.model_name);
@@ -121,10 +116,7 @@ export function DashboardContent() {
       formData.append('stream', String(options?.stream ?? true));
       formData.append('enable_context_manager', String(options?.enable_context_manager ?? false));
 
-      console.log('FormData content:', Array.from(formData.entries()));
-
       const result = await initiateAgentMutation.mutateAsync(formData);
-      console.log('Agent initiated:', result);
 
       if (result.thread_id) {
         setInitiatedThreadId(result.thread_id);
@@ -133,14 +125,67 @@ export function DashboardContent() {
       }
       chatInputRef.current?.clearPendingFiles();
     } catch (error: any) {
-      console.error('Error during submission process:', error);
       if (error instanceof BillingError) {
-        console.log('Handling BillingError:', error.detail);
         onOpen("paymentRequiredDialog");
       }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleWorkflowSelection = async (workflow: { query?: string; files?: string[], queryFromFile?: string }) => {
+    // Clear previous state before loading new workflow
+    chatInputRef.current?.clear();
+    setInputValue('');
+
+    setIsWorkflowLoading(true);
+    let promptText = workflow.query || '';
+
+    if (workflow.queryFromFile) {
+      try {
+        const response = await fetch(workflow.queryFromFile);
+        if (response.ok) {
+          promptText = await response.text();
+        } else {
+          toast.error('Failed to load workflow prompt.');
+          setIsWorkflowLoading(false);
+          return;
+        }
+      } catch (error) {
+        toast.error('Error loading workflow prompt.');
+        setIsWorkflowLoading(false);
+        return;
+      }
+    }
+
+    setInputValue(promptText);
+    
+    if (workflow.files && workflow.files.length > 0 && chatInputRef.current) {
+      try {
+        const filePromises = workflow.files.map(async (filePath) => {
+          const response = await fetch(filePath);
+          if (response.ok) {
+            const blob = await response.blob();
+            const fileName = normalizeFilenameToNFC(filePath.split('/').pop() || 'document');
+            return new File([blob], fileName, { type: blob.type });
+          }
+          return null;
+        });
+
+        const files = (await Promise.all(filePromises)).filter(Boolean) as File[];
+        
+        if (files.length > 0) {
+          chatInputRef.current?.addFiles?.(files);
+        }
+
+        toast.success('Workflow ready. Please upload the Investment Memorandum to proceed.');
+
+      } catch (error) {
+        console.error('Error loading workflow files:', error);
+        toast.error('Error attaching workflow files.');
+      }
+    }
+    setIsWorkflowLoading(false);
   };
 
   useEffect(() => {
@@ -223,14 +268,14 @@ export function DashboardContent() {
             />
           </div>
 
-          <Examples onSelectPrompt={setInputValue} />
+          <Examples onSelectPrompt={setInputValue} onSelectWorkflow={handleWorkflowSelection} isLoading={isWorkflowLoading} />
         </div>
 
         <BillingErrorAlert
           message={billingError?.message}
           currentUsage={billingError?.currentUsage}
           limit={billingError?.limit}
-          accountId={personalAccount?.account_id}
+          accountId={billingError?.accountId}
           onDismiss={clearBillingError}
           isOpen={!!billingError}
         />

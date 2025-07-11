@@ -29,19 +29,29 @@ import {
 
 type PromptExample = {
   title: string;
-  query: string;
+  query?: string;
+  queryFromFile?: string;
   icon: React.ReactNode;
+  files?: string[];
 };
 
 const allPrompts: PromptExample[] = [
   {
     title: 'Investment Memorandum screening with UW',
-    query: 'Act as an experienced private equity real estate analyst specializing in Danish assets: review all documents. including spreadsheets, PDFs and supporting files, and extract, analyze. Included are the following documents. The point of the IC is not to "sell" the property, acts as an objective investigator. An example of a correctly produced IC for another property.',
+    queryFromFile: '/Instruction_documents/prompt.md',
     icon: <BarChart3 className="text-green-700 dark:text-green-400" size={16} />,
+    files: [
+      '/Instruction_documents/company_information.md',
+      '/Instruction_documents/IC_overview.md',
+      '/Instruction_documents/Instructions on how to use Redata.docx',
+      '/Instruction_documents/Realestatemetrics.md',
+      '/Instruction_documents/Optimized_IC_Analysis_Workflow.md',
+      '/Instruction_documents/AI_Model_IC_Instructions.md',
+      '/Instruction_documents/Financial_Residential_Investment_Template.xlsx',
+
+
+    ],
   },
-
-
-
 ];
 
 // Function to get random prompts
@@ -52,8 +62,12 @@ const getRandomPrompts = (count: number = 3): PromptExample[] => {
 
 export const Examples = ({
   onSelectPrompt,
+  onSelectWorkflow,
+  isLoading,
 }: {
   onSelectPrompt?: (query: string) => void;
+  onSelectWorkflow?: (workflow: { query?: string; files?: string[], queryFromFile?: string }) => void;
+  isLoading?: boolean;
 }) => {
   const [displayedPrompts, setDisplayedPrompts] = useState<PromptExample[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -70,38 +84,25 @@ export const Examples = ({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-xs text-muted-foreground font-medium">Workflows</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <motion.div
-            animate={{ rotate: isRefreshing ? 360 : 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-          >
-            <RefreshCw size={10} />
-          </motion.div>
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">For you</h3>
+        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
+          <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
         </Button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
         {displayedPrompts.map((prompt, index) => (
           <motion.div
-            key={`${prompt.title}-${index}`}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: 0.3,
-              delay: index * 0.05,
-              ease: "easeOut"
-            }}
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
           >
             <Card
-              className="group cursor-pointer h-full shadow-none transition-all bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 p-0 justify-center"
-              onClick={() => onSelectPrompt && onSelectPrompt(prompt.query)}
+              className="cursor-pointer group hover:bg-muted/50 transition-all h-full"
+              onClick={() => !isLoading && onSelectWorkflow?.(prompt)}
+              disabled={isLoading}
             >
               <CardHeader className="p-2 grid-rows-1">
                 <div className="flex items-start justify-center gap-1.5">

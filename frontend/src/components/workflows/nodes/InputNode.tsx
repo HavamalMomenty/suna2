@@ -27,6 +27,12 @@ interface InputNodeData {
   schedule_config?: ScheduleConfig;
   webhook_config?: WebhookConfig;
   variables?: Record<string, any>;
+  files?: Array<{
+    id: string;
+    name: string;
+    path: string;
+    content?: string;
+  }>;
 }
 
 const InputNode = memo(({ data, selected, id }: NodeProps) => {

@@ -426,7 +426,24 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {
 
     try {
       setRunning(true);
-      const result = await executeWorkflow(workflowId);
+      
+      // Find the input node to get prompt and files
+      const inputNode = nodes.find(node => node.type === 'inputNode');
+      const variables: Record<string, any> = {};
+      
+      // If there are files in the input node, read them and add to instruction_documents
+      if (inputNode?.data?.files && inputNode.data.files.length > 0) {
+        // Extract file info to pass to the API as instruction_documents
+        const fileList = inputNode.data.files.map((file: any) => ({
+          name: file.name,
+          path: file.path,
+        }));
+        
+        // Add files to instruction_documents for the workflow
+        variables.instruction_documents = fileList;
+      }
+      
+      const result = await executeWorkflow(workflowId, variables);
       toast.success("Workflow execution started! Redirecting to chat...");
       console.log('Workflow execution started:', result);
       
