@@ -43,7 +43,7 @@ const allPrompts: PromptExample[] = [
     files: [
       '/Instruction_documents/company_information.md',
       '/Instruction_documents/IC_overview.md',
-      '/Instruction_documents/Instructions on how to use Redata.docx',
+      '/Instruction_documents/howToUseRedata.html',
       '/Instruction_documents/Realestatemetrics.md',
       '/Instruction_documents/Optimized_IC_Analysis_Workflow.md',
       '/Instruction_documents/AI_Model_IC_Instructions.md',

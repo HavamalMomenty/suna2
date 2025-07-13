@@ -8,6 +8,7 @@ from services.supabase import DBConnection
 from utils.logger import logger
 from dataclasses import dataclass
 from enum import Enum
+from .quality_validator import ThylanderWorkflowValidator, ValidationResult
 
 class NodeType(Enum):
     INPUT = "inputNode"
@@ -62,6 +63,7 @@ class DeterministicWorkflowExecutor:
     
     def __init__(self, db: DBConnection):
         self.db = db
+        self.quality_validator = ThylanderWorkflowValidator()
     
     async def execute_workflow(
         self,
@@ -118,6 +120,10 @@ class DeterministicWorkflowExecutor:
             logger.info(f"Deterministic agent config - configured_mcps: {len(flow_config['configured_mcps'])} servers")
             logger.info(f"Deterministic agent config - custom_mcps: {len(flow_config['custom_mcps'])} servers")
             
+            # Store initial workflow state for quality validation
+            initial_workflow_output = {}
+            workflow_completed = False
+            
             # Run the agent (same as legacy executor, but with flow-based configuration)
             from agent.run import run_agent
             
@@ -132,11 +138,17 @@ class DeterministicWorkflowExecutor:
                 agent_config=agent_config,
                 max_iterations=10  # Allow more iterations for complex workflows
             ):
+                # Collect workflow output for quality validation
+                if response.get('type') in ['agent_response', 'tool_result', 'final_response']:
+                    initial_workflow_output.update(response)
+                
                 yield self._transform_agent_response_to_workflow_update(response, execution.id)
 
                 if response.get('type') == 'status':
                     status = response.get('status')
                     if status in ['completed', 'failed', 'stopped']:
+                        if status == 'completed':
+                            workflow_completed = True
                         execution.status = status.lower()
                         execution.completed_at = datetime.now(timezone.utc)
                         if status == 'failed':
@@ -144,18 +156,106 @@ class DeterministicWorkflowExecutor:
                         await self._update_execution(execution)
                         break
 
-            if execution.status == "running":
-                execution.status = "completed"
-                execution.completed_at = datetime.now(timezone.utc)
-                await self._update_execution(execution)
+            # Quality validation and correction phase
+            if workflow_completed and self._should_perform_quality_check(workflow.name, variables):
+                logger.info("Starting quality validation phase for Thylander workflow")
+                logger.info(f"Workflow name: {workflow.name}, Variables keys: {list(variables.keys()) if variables else 'None'}")
                 
                 yield {
                     "type": "workflow_status",
                     "execution_id": execution.id,
-                    "status": "completed",
-                    "message": "Deterministic workflow completed successfully"
+                    "status": "validating",
+                    "message": "Performing quality validation on workflow output"
                 }
-        
+                
+                # Perform quality validation
+                quality_result = await self.quality_validator.validate_workflow_output(
+                    workflow_output=initial_workflow_output,
+                    original_input=variables or {},
+                    template_content=self._extract_template_from_variables(variables)
+                )
+                
+                logger.info(f"Quality validation completed: score={quality_result.score}, result={quality_result.result}, needs_correction={quality_result.needs_correction}")
+                logger.info(f"Quality issues: {quality_result.issues}")
+                logger.info(f"Correction prompt: {quality_result.correction_prompt}")
+                
+                yield {
+                    "type": "quality_validation",
+                    "execution_id": execution.id,
+                    "validation_score": quality_result.score,
+                    "validation_result": quality_result.result.value,
+                    "issues": quality_result.issues,
+                    "suggestions": quality_result.suggestions
+                }
+                
+                # Perform correction if needed
+                if quality_result.needs_correction:
+                    logger.info("✅ CORRECTION TRIGGERED: Starting correction phase based on validation feedback")
+                    
+                    yield {
+                        "type": "workflow_status",
+                        "execution_id": execution.id,
+                        "status": "correcting",
+                        "message": "Performing quality-based corrections..."
+                    }
+                    
+                    try:
+                        # Add correction message to the existing thread (not a new one)
+                        await self._add_correction_message_to_thread(thread_id, quality_result.correction_prompt)
+                        logger.info("✅ Added correction message to thread")
+                        
+                        # Continue with correction agent in the same thread
+                        from agent.run import run_agent
+                        
+                        corrected_output_parts = []
+                        async for response in run_agent(
+                            thread_id=thread_id,  # Use the same thread_id
+                            project_id=project_id,
+                            stream=True,
+                            model_name="anthropic/claude-sonnet-4-20250514",
+                            agent_config={
+                                "enabled_tools": {
+                                    "sb_files_tool": {"enabled": True, "description": "File operations"},
+                                    "message_tool": {"enabled": True, "description": "Send messages"}
+                                }
+                            }
+                        ):
+                            if response.get('type') == 'content':
+                                content = response.get('content', '')
+                                if isinstance(content, str):
+                                    corrected_output_parts.append(content)
+                                elif isinstance(content, dict):
+                                    corrected_output_parts.append(content.get('content', ''))
+                            elif response.get('type') == 'status':
+                                if response.get('status') in ['completed', 'failed', 'stopped']:
+                                    break
+                        
+                        corrected_output = '\n'.join(corrected_output_parts)
+                        logger.info(f"✅ Correction completed, output length: {len(corrected_output)}")
+                        
+                        yield {
+                            "type": "correction_completed",
+                            "execution_id": execution.id,
+                            "corrected_output": corrected_output,
+                            "original_score": quality_result.score,
+                            "message": "Quality correction completed"
+                        }
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Error during correction phase: {e}")
+                        yield {
+                            "type": "correction_failed",
+                            "execution_id": execution.id,
+                            "error": str(e),
+                            "message": f"Correction failed: {str(e)}"
+                        }
+                else:
+                    logger.info(f"❌ NO CORRECTION NEEDED: score={quality_result.score}, needs_correction={quality_result.needs_correction}")
+            else:
+                quality_check_reason = "workflow not completed" if not workflow_completed else "quality check not applicable"
+                logger.info(f"❌ Quality validation SKIPPED: {quality_check_reason}")
+                logger.info(f"Workflow name: '{workflow.name}', Should check: {self._should_perform_quality_check(workflow.name, variables)}")
+    
         except Exception as e:
             logger.error(f"Error executing deterministic workflow {workflow.id}: {e}")
             execution.status = "failed"
@@ -170,6 +270,80 @@ class DeterministicWorkflowExecutor:
                 "error": str(e)
             }
     
+    def _should_perform_quality_check(self, workflow_name: str, variables: Optional[Dict[str, Any]]) -> bool:
+        """Determine if quality check should be performed based on workflow type."""
+        # Enable quality check for Thylander workflows or when explicitly requested
+        if workflow_name and 'thylander' in workflow_name.lower():
+            return True
+        
+        if variables and variables.get('enable_quality_check', False):
+            return True
+        
+        # Enable for investment memorandum workflows
+        if variables:
+            input_text = str(variables).lower()
+            investment_keywords = ['investment memorandum', 'underwriting', 'ic paper', 'private equity', 'real estate']
+            return any(keyword in input_text for keyword in investment_keywords)
+        
+        return False
+    
+    def _extract_template_from_variables(self, variables: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Extract template content from workflow variables."""
+        if not variables:
+            return None
+        
+        # Look for template in various possible keys
+        template_keys = ['template', 'underwriting_template', 'ic_template', 'template_content']
+        
+        for key in template_keys:
+            if key in variables and variables[key]:
+                return str(variables[key])
+        
+        return None
+    
+    def _extract_main_content(self, workflow_output: Dict[str, Any]) -> str:
+        """Extract the main content from workflow output for correction."""
+        # Similar to quality validator's extraction logic
+        content_keys = ['content', 'output', 'result', 'ic_paper', 'underwriting', 'response']
+        
+        for key in content_keys:
+            if key in workflow_output and workflow_output[key]:
+                if isinstance(workflow_output[key], str):
+                    return workflow_output[key]
+                elif isinstance(workflow_output[key], dict):
+                    for sub_key in ['text', 'content', 'html', 'markdown']:
+                        if sub_key in workflow_output[key]:
+                            return workflow_output[key][sub_key]
+        
+        # Fallback to the last message content
+        if 'messages' in workflow_output and workflow_output['messages']:
+            last_message = workflow_output['messages'][-1]
+            if isinstance(last_message, dict) and 'content' in last_message:
+                return last_message['content']
+        
+        return str(workflow_output)
+    
+    async def _add_correction_message_to_thread(self, thread_id: str, correction_prompt: str):
+        """Add correction message to thread."""
+        try:
+            client = await self.db.client
+            
+            message_data = {
+                "message_id": str(uuid.uuid4()),
+                "thread_id": thread_id,
+                "type": "user",
+                "is_llm_message": True,
+                "content": json.dumps({"role": "user", "content": correction_prompt}),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await client.table('messages').insert(message_data).execute()
+            logger.info(f"Added correction message to thread {thread_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to add correction message to thread: {e}")
+            raise
+
     def _analyze_visual_flow(self, workflow: WorkflowDefinition, variables: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze the visual flow to build prompt and tool configuration."""
         logger.info(f"Analyzing visual flow for workflow {workflow.id}")
@@ -330,6 +504,30 @@ class DeterministicWorkflowExecutor:
             prompt_parts.extend([
                 "Available Variables:",
                 *[f"- {key}: {value}" for key, value in variables.items()],
+                ""
+            ])
+        
+        # Add strict template enforcement for PE Real Estate workflows
+        if "Investment Memorandum" in workflow.name.lower() or "real estate" in workflow.name.lower():
+            template_constraint = """
+CRITICAL: You MUST follow the provided template structure exactly.
+- Fill ALL required fields using the provided format
+- Do NOT create your own template structure
+- Use ONLY the template provided in the input
+- If a field cannot be filled from the memorandum, mark it as "Data not available"
+
+FINANCIAL CALCULATION REQUIREMENTS:
+- Total Investment must include purchase price + renovation costs + closing costs
+- IRR calculations must be based on projected cash flows over the hold period
+- Cap Rate must be calculated as Year 1 NOI / Purchase Price
+- All financial figures must be internally consistent
+- Show your work step-by-step for all calculations
+
+OUTPUT FORMAT: Provide your response as structured JSON following the exact template provided.
+"""
+            prompt_parts.extend([
+                "TEMPLATE ENFORCEMENT:",
+                template_constraint,
                 ""
             ])
         
@@ -678,74 +876,6 @@ class DeterministicWorkflowExecutor:
             return external_dependencies.issubset(completed_nodes)
         
         return dependencies.issubset(completed_nodes)
-    
-    async def _ensure_workflow_has_flow_data(self, workflow: WorkflowDefinition) -> WorkflowDefinition:
-        """Ensure the workflow has nodes and edges data for deterministic execution."""
-        
-        if (hasattr(workflow, 'nodes') and hasattr(workflow, 'edges') and 
-            workflow.nodes is not None and workflow.edges is not None):
-            logger.info(f"Workflow {workflow.id} already has flow data with {len(workflow.nodes)} nodes and {len(workflow.edges)} edges")
-            return workflow
-        
-        try:
-            client = await self.db.client
-            result = await client.table('workflow_flows').select('*').eq('workflow_id', workflow.id).execute()
-            
-            logger.info(f"Database query result for workflow {workflow.id}: {result.data}")
-            
-            if result.data:
-                flow_data = result.data[0]
-                nodes_data = flow_data.get('nodes', [])
-                edges_data = flow_data.get('edges', [])
-                
-                logger.info(f"Loaded flow data for workflow {workflow.id}: {len(nodes_data)} nodes, {len(edges_data)} edges")
-                from .models import WorkflowNode, WorkflowEdge
-                
-                nodes = []
-                for node_data in nodes_data:
-                    if isinstance(node_data, dict):
-                        node = WorkflowNode(
-                            id=node_data.get('id', ''),
-                            type=node_data.get('type', ''),
-                            position=node_data.get('position', {'x': 0, 'y': 0}),
-                            data=node_data.get('data', {})
-                        )
-                        nodes.append(node)
-                
-                edges = []
-                for edge_data in edges_data:
-                    if isinstance(edge_data, dict):
-                        edge = WorkflowEdge(
-                            id=edge_data.get('id', ''),
-                            source=edge_data.get('source', ''),
-                            target=edge_data.get('target', ''),
-                            sourceHandle=edge_data.get('sourceHandle'),
-                            targetHandle=edge_data.get('targetHandle')
-                        )
-                        edges.append(edge)
-                
-                workflow_dict = workflow.model_dump() if hasattr(workflow, 'model_dump') else workflow.dict()
-                workflow_dict['nodes'] = nodes if nodes else []
-                workflow_dict['edges'] = edges if edges else []
-                
-                enhanced_workflow = type(workflow)(**workflow_dict)
-                return enhanced_workflow
-            
-            else:
-                logger.warning(f"No visual flow data found for workflow {workflow.id}")
-                logger.info(f"Falling back to legacy executor since no visual flow data exists")
-                raise ValueError("No visual flow data found - falling back to legacy executor")
-                
-        except Exception as e:
-            logger.error(f"Error loading visual flow data for workflow {workflow.id}: {e}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            workflow_dict = workflow.model_dump() if hasattr(workflow, 'model_dump') else workflow.dict()
-            workflow_dict['nodes'] = []
-            workflow_dict['edges'] = []
-            enhanced_workflow = type(workflow)(**workflow_dict)
-            logger.info(f"Created workflow with empty flow data as fallback")
-            return enhanced_workflow
     
     async def _execute_node(
         self,
