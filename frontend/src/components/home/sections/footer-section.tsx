@@ -44,7 +44,7 @@ export function FooterSection() {
 
           <div className="flex items-center gap-4">
             <a
-              href="https://github.com/kortix-ai/suna"
+              href="https://github.com/momenty"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"
@@ -61,7 +61,7 @@ export function FooterSection() {
               </svg>
             </a>
             <a
-              href="https://x.com/kortixai"
+              href="https://x.com/momenty_dk"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="X (Twitter)"
@@ -78,7 +78,7 @@ export function FooterSection() {
               </svg>
             </a>
             <a
-              href="https://www.linkedin.com/company/kortix/"
+              href="https://www.linkedin.com/company/momenty-dk/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="LinkedIn"
