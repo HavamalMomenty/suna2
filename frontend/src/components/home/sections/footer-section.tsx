@@ -20,10 +20,10 @@ export function FooterSection() {
   }, []);
 
   const logoSrc = !mounted
-    ? '/kortix-logo.svg'
+    ? '/Momenty_lastmile.svg'
     : resolvedTheme === 'dark'
-      ? '/kortix-logo-white.svg'
-      : '/kortix-logo.svg';
+      ? '/Momenty_lastmile.svg' // here should be the inverted logo
+      : '/Momenty_lastmile.svg';
 
   return (
     <footer id="footer" className="w-full pb-0">

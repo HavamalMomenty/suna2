@@ -100,10 +100,10 @@ export function Navbar() {
   const handleOverlayClick = () => setIsDrawerOpen(false);
 
   const logoSrc = !mounted
-    ? '/kortix-logo.svg'
+    ? '/Momenty_lastmile.svg'
     : resolvedTheme === 'dark'
-      ? '/kortix-logo-white.svg'
-      : '/kortix-logo.svg';
+      ? '/Momenty_lastmile.svg'
+      : '/Momenty_lastmile.svg';
 
   return (
     <header
@@ -126,14 +126,15 @@ export function Navbar() {
           )}
         >
           <div className="flex h-[56px] items-center justify-between p-4">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
               <Image
                 src={logoSrc}
-                alt="Kortix Logo"
-                width={140}
-                height={22}
+                alt="Momenty Logo"
+                width={100}
+                height={24}
+                className="fill-primary"
                 priority
-              /> 
+              />
             </Link>
 
             <NavMenu />
@@ -205,13 +206,12 @@ export function Navbar() {
               {/* Mobile menu content */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <Link href="/" className="flex items-center gap-3">
+                  <Link href="/" className="flex items-center gap-2">
                     <Image
                       src={logoSrc}
-                      alt="Kortix Logo"
-                      width={120}
-                      height={22}
-                      priority
+                      alt="Momenty Logo"
+                      width={100}
+                      height={24}
                     />
                     <span className="font-medium text-primary text-sm">
                       / Suna
