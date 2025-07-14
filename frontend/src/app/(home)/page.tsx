@@ -17,17 +17,17 @@ export default function Home() {
       <main className="flex flex-col items-center justify-center min-h-screen w-full">
         <div className="w-full divide-y divide-border">
           <HeroSection />
-          <UseCasesSection />
+          {/*<UseCasesSection />*/}
           {/* <CompanyShowcase /> */}
           {/* <BentoSection /> */}
           {/* <QuoteSection /> */}
           {/* <FeatureSection /> */}
           {/* <GrowthSection /> */}
-          <OpenSourceSection />
-          <PricingSection />
+          {/*<OpenSourceSection />*/}
+          {/*<PricingSection />*/}
           {/* <TestimonialSection /> */}
           {/* <FAQSection /> */}
-          <CTASection />
+          {/*<CTASection />*/}
           <FooterSection />
         </div>
       </main>

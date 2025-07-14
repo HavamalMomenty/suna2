@@ -49,17 +49,17 @@ export interface PricingTier {
 }
 
 export const siteConfig = {
-  name: 'Kortix Suna',
-  description: 'The Generalist AI Agent that can act on your behalf.',
+  name: 'Node',
+  description: 'The workflow specific AI Agent that can act on your behalf.',
   cta: 'Start Free',
   url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   keywords: ['AI Agent', 'Generalist AI', 'Open Source AI', 'Autonomous Agent'],
   links: {
-    email: 'support@kortix.ai',
-    twitter: 'https://x.com/kortixai',
-    discord: 'https://discord.gg/kortixai',
-    github: 'https://github.com/Kortix-ai/Suna',
-    instagram: 'https://instagram.com/kortixai',
+    email: 'support@momenty.dk',
+    twitter: '',
+    discord: '',
+    github: '',
+    instagram: '',
   },
   nav: {
     links: [
@@ -97,11 +97,11 @@ export const siteConfig = {
       </svg>
     ),
     badge: '100% OPEN SOURCE',
-    githubUrl: 'https://github.com/kortix-ai/suna',
-    title: 'Suna, the AI Employee.',
+    githubUrl: '',
+    title: 'Node, the AI Employee.',
     description:
-      'Suna by Kortix – is a generalist AI Agent that acts on your behalf.',
-    inputPlaceholder: 'Ask Suna to...',
+      'Node by Momenty – is a workflow specific AI Agent that acts on your behalf.',
+    inputPlaceholder: 'Ask Node to...',
   },
   cloudPricingItems: [
     {
@@ -1110,11 +1110,11 @@ export const siteConfig = {
   },
   footerLinks: [
     {
-      title: 'Kortix',
+      title: 'Node',
       links: [
-        { id: 1, title: 'About', url: 'https://kortix.ai' },
-        { id: 3, title: 'Contact', url: 'mailto:hey@kortix.ai' },
-        { id: 4, title: 'Careers', url: 'https://kortix.ai/careers' },
+        { id: 1, title: 'About', url: '' },
+        { id: 3, title: 'Contact', url: '' },
+        { id: 4, title: 'Careers', url: '' },
       ],
     },
     {
@@ -1123,10 +1123,10 @@ export const siteConfig = {
         {
           id: 5,
           title: 'Documentation',
-          url: 'https://github.com/Kortix-ai/Suna',
+          url: '',
         },
-        { id: 7, title: 'Discord', url: 'https://discord.gg/Py6pCBUUPw' },
-        { id: 8, title: 'GitHub', url: 'https://github.com/Kortix-ai/Suna' },
+        { id: 7, title: 'Discord', url: '' },
+        { id: 8, title: 'GitHub', url: '' },
       ],
     },
     {
@@ -1135,17 +1135,17 @@ export const siteConfig = {
         {
           id: 9,
           title: 'Privacy Policy',
-          url: 'https://suna.so/legal?tab=privacy',
+          url: '',
         },
         {
           id: 10,
           title: 'Terms of Service',
-          url: 'https://suna.so/legal?tab=terms',
+          url: '',
         },
         {
           id: 11,
           title: 'License Apache 2.0',
-          url: 'https://github.com/Kortix-ai/Suna/blob/main/LICENSE',
+          url: '',
         },
       ],
     },
