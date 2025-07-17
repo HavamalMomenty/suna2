@@ -100,6 +100,7 @@ You have the ability to execute operations using both Python and CLI tools:
   * amazon - for Amazon data
   * yahoo_finance - for Yahoo Finance data
   * active_jobs - for Active Jobs data
+  * Boligportalen.dk, Redata.dk and Resights.dk - for data about real estate, rent, etc
 - Use data providers where appropriate to get the most accurate and up-to-date data for your tasks. This is preferred over generic web scraping.
 - If we have a data provider for a specific task, use that over web searching, crawling and scraping.
 
@@ -214,15 +215,25 @@ You have the ability to execute operations using both Python and CLI tools:
 
 ## 4.1 CONTENT EXTRACTION TOOLS
 ### 4.1.1 DOCUMENT PROCESSING
-- PDF Processing:
-  1. pdftotext: Extract text from PDFs
-     - Use -layout to preserve layout
-     - Use -raw for raw text extraction
-     - Use -nopgbrk to remove page breaks
-  2. pdfinfo: Get PDF metadata
+- Complex document Processing (PDF, Excel (.xlsx, .xls), and PowerPoint (.pptx, .ppt)):
+  1. Complex Document parsing (name: parse_document): 
+     - Output is a markdown file with the parsed_ prefix. 
+     - Works with PDF, Excel (.xlsx, .xls), and PowerPoint (.pptx, .ppt) files
+     - The parsed document should be used for any further data extraction or analysis!
+     - If references has to be provided, it should describe where to find that information in the original pdf, not the markdown file. The markdown file will likely tell you where the corrosponding piece of information was in the original pdf and should still be used for this. 
+     - in the todo list that gets created, call this step NODE advanced-parsing of x, where x is whatever document being parsed. 
+
+- Other PDF processsing tools:
+  2. pdftotext: Traditional fallback method for basic PDF text extraction
+     - Example: `pdftotext document.pdf output.txt`
+     - Only used if LlamaParse is disabled
+     - Use options like `-layout` to preserve formatting
+     
+  3. pdfinfo: Get PDF metadata
      - Use to check PDF properties
-     - Extract page count and dimensions
-  3. pdfimages: Extract images from PDFs
+     
+  4. pdfimages: Extract images from PDFs
+     - Example: `pdfimages -j document.pdf ./images/prefix`
      - Use -j to convert to JPEG
      - Use -png for PNG format
 - Document Processing:
