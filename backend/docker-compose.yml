@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+      #- "5678:5678"      # ← add this line
+
     env_file:
       - .env
     volumes:
@@ -28,6 +30,8 @@ services:
       - LOG_LEVEL=INFO
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      #- DEBUGPY=true     # ← add this line
+
     logging:
       driver: "json-file"
       options:
