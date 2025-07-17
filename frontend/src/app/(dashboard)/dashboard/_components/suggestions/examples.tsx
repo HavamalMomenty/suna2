@@ -48,8 +48,29 @@ const allPrompts: PromptExample[] = [
       '/Instruction_documents/Optimized_IC_Analysis_Workflow.md',
       '/Instruction_documents/AI_Model_IC_Instructions.md',
       '/Instruction_documents/Financial_Residential_Investment_Template.xlsx',
-
-
+      '/Instruction_documents/IC_memo_template.html',
+    ],
+  },
+  {
+    title: 'Financial Underwriting',
+    queryFromFile: '/Instruction_documents/prompt_uw.md',
+    icon: <BarChart3 className="text-green-700 dark:text-green-400" size={16} />,
+    files: [
+      '/Instruction_documents/company_information.md',
+      '/Instruction_documents/howToUseRedata.html',
+      '/Instruction_documents/Realestatemetrics.md',
+      '/Instruction_documents/Financial_Residential_Investment_Template.xlsx',
+    ],
+  },
+  {
+    title: 'IC Memo',
+    queryFromFile: '/Instruction_documents/prompt_ic.md',
+    icon: <BarChart3 className="text-green-700 dark:text-green-400" size={16} />,
+    files: [
+      '/Instruction_documents/company_information.md',
+      '/Instruction_documents/IC_overview.md',
+      '/Instruction_documents/howToUseRedata.html',
+      '/Instruction_documents/IC_memo_template.html',
     ],
   },
 ];

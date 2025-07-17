@@ -109,8 +109,8 @@ def create_sandbox(password: str, project_id: str = None):
         },
         resources=Resources(
             cpu=2,
-            memory=4,
-            disk=5,
+            memory=2,
+            disk=2,
         ),
         auto_stop_interval=15,
         auto_archive_interval=24 * 60,
