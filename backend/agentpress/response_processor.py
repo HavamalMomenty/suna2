@@ -404,10 +404,12 @@ class ResponseProcessor:
                          # Still need to process the result for the buffer
                          try:
                              if execution["task"].done():
+                                       
                                  result = execution["task"].result()
+
                                  context.result = result
                                  tool_results_buffer.append((execution["tool_call"], result, tool_idx, context))
-                                 
+            
                                  if tool_name in ['ask', 'complete']:
                                      logger.info(f"Terminating tool '{tool_name}' completed during streaming. Setting termination flag.")
                                      self.trace.event(name="terminating_tool_completed_during_streaming", level="DEFAULT", status_message=(f"Terminating tool '{tool_name}' completed during streaming. Setting termination flag."))

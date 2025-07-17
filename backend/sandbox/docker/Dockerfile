@@ -124,9 +124,17 @@ ENV RESOLUTION_HEIGHT=768
 # Add Chrome flags to prevent multiple tabs/windows
 ENV CHROME_FLAGS="--single-process --no-first-run --no-default-browser-check --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-breakpad --disable-component-extensions-with-background-pages --disable-dev-shm-usage --disable-extensions --disable-features=TranslateUI --disable-ipc-flooding-protection --disable-renderer-backgrounding --enable-features=NetworkServiceInProcess2 --force-color-profile=srgb --metrics-recording-only --mute-audio --no-sandbox --disable-gpu"
 
-# Set up supervisor configuration
-RUN mkdir -p /var/log/supervisor
+# Copy xstartup script
+COPY xstartup /opt/xstartup
+RUN chmod +x /opt/xstartup
+
+# Copy supervisord config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Create workspace directory explicitly and make it the primary working directory
+#RUN mkdir -p /workspace
+#WORKDIR /workspace
+
 
 EXPOSE 7788 6080 5901 8000 8080
 

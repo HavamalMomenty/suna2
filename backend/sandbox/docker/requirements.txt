@@ -4,3 +4,5 @@ pyautogui==0.9.54
 pillow==10.2.0
 pydantic==2.6.1
 pytesseract==0.3.13
+llama-index>=0.9.0
+llama-cloud-services==0.6.46

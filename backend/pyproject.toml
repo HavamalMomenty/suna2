@@ -61,6 +61,7 @@ dependencies = [
   "croniter>=1.4.0",
   "qstash>=2.0.0",
   "structlog==25.4.0",
+  "llama-parse>=0.1.0", # This actually installs workflows, which is required, not the llama parse itself which is installed inside the the venv
 ]
 
 [project.urls]

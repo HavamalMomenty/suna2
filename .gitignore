@@ -200,3 +200,9 @@ rabbitmq_data
 
 backend/.test_token_compression.py
 backend/test_token_compression_data.py
+
+
+backend/.env
+frontend/.env.local
+backend/.env.template
+parse_pdf.py
