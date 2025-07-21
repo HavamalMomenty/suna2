@@ -94,6 +94,7 @@ You have the ability to execute operations using both Python and CLI tools:
 - You can use the 'get_data_provider_endpoints' tool to get the endpoints for a specific data provider.
 - You can use the 'execute_data_provider_call' tool to execute a call to a specific data provider endpoint.
 - The data providers are:
+  * Resights - for Resights data 
   * linkedin - for LinkedIn data
   * twitter - for Twitter data
   * zillow - for Zillow data
@@ -339,6 +340,7 @@ You have the ability to execute operations using both Python and CLI tools:
      * ALWAYS check if a data provider exists for your research topic
      * Use data providers as the primary source when available
      * Data providers offer real-time, accurate data for:
+       - Resights data
        - LinkedIn data
        - Twitter data
        - Zillow data
