@@ -46,7 +46,7 @@ async def get_or_start_sandbox(sandbox_id: str):
             try:
                 daytona.start(sandbox)
                 # Wait a moment for the sandbox to initialize
-                # sleep(5)
+                sleep(5) # comment out
                 # Refresh sandbox state after starting
                 sandbox = daytona.get(sandbox_id)
                 
@@ -114,9 +114,9 @@ def create_sandbox(password: str, project_id: str = None):
             #"LLAMA_API_KEY": os.getenv("LLAMA_API_KEY", "")
         },
         resources=Resources(
-            cpu=1,
-            memory=1,
-            disk=2,
+            cpu=2,
+            memory=8,
+            disk=8,
         ),
         auto_stop_interval=15,
         auto_archive_interval=24 * 60,

@@ -19,7 +19,60 @@
   </section>
 
   <hr>
-
+  <section id="boliglejedata-scraping">
+    <h2>Automation Workflow for <em>Boliglejedata</em> – Kommuner Tab</h2>
+  
+    <p>This section describes the precise automation flow for extracting residential lease data from the <strong>“Boliglejedata”</strong> module when logged in on <a href="https://app.redata.dk/boliglejedata" target="_blank">ReData’s Boliglejedata Page</a>.</p>
+  
+    <h3>Step 0: Open “Boliglejedata” from the Sidebar Menu</h3>
+    <ul>
+      <li>After login, locate the vertical navigation sidebar on the left.</li>
+      <li>Click on the tab labeled <strong>“Boliglejedata”</strong>. This opens the lease data module.</li>
+      <li>Wait until the page has fully loaded (URL should include <code>/boliglejedata</code>).</li>
+    </ul>
+  
+    <h3>Step 1: Navigate to the "Kommuner" Tab</h3>
+    <ul>
+      <li>Locate the section or filter labeled <strong>“Kommuner”</strong> on the left-hand panel.</li>
+      <li>Click it to expand the list of municipalities.</li>
+      <li>Use the input field to search and select a municipality (e.g., <code>Ballerup</code>).</li>
+      <li>Wait for the map and right-hand analytics panel to reload with new data.</li>
+    </ul>
+  
+    <h3>Step 2: Extract Metrics from Right Panel</h3>
+    <p>Once the municipality is selected, extract the following data from the DOM elements on the right side:</p>
+    <ul>
+      <li><strong>Antal lejeopslag:</strong> Use query selector:
+        <pre><code>document.querySelectorAll('.charTableDataFont .text-left')[0].innerText</code></pre>
+      </li>
+      <li><strong>Gns. leje pr. m²:</strong>
+        <pre><code>document.querySelectorAll('.charTableDataFont .text-left')[1].innerText</code></pre>
+      </li>
+      <li><strong>Gns. antal værelser:</strong>
+        <pre><code>document.querySelectorAll('.charTableDataFont .text-left')[2].innerText</code></pre>
+      </li>
+      <li><strong>Gns. liggetid (dage):</strong>
+        <pre><code>document.querySelectorAll('.charTableDataFont .text-left')[3].innerText</code></pre>
+      </li>
+    </ul>
+  
+    <p>These values are found inside an HTML table with classes like <code>charTableDataFont</code> or <code>housingTableTotalDisplay</code>. Use a headless browser automation tool (e.g., <code>Selenium</code> or <code>Puppeteer</code>) to parse and extract the data programmatically.</p>
+  
+    <h3>Step 3: (Optional) Extract Scatterplot or Trend Data</h3>
+    <p>The scatterplot titled "Udvikling over lejepriser" can be accessed by:</p>
+    <ul>
+      <li>Targeting the <code>&lt;canvas&gt;</code> element (may require pixel decoding)</li>
+      <li>Or accessing JavaScript-injected data sources (e.g., <code>window.__REACT_QUERY_CACHE__</code> or network payloads)</li>
+    </ul>
+  
+    <h3>Additional Notes</h3>
+    <ul>
+      <li>Ensure page elements are fully rendered before querying (observe network idle or use <code>waitForSelector</code>).</li>
+      <li>After selecting a new municipality, DOM structure will re-render — re-evaluate selectors.</li>
+      <li>Log and cache extracted values with a timestamp + municipality name.</li>
+    </ul>
+  </section>
+  
   <section id="modules">
     <h2>Available Modules</h2>
     <p>Each module corresponds to a tab or navigation item on the platform UI.</p>
