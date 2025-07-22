@@ -97,10 +97,7 @@ class LlamaParseDocumentTool(SandboxToolsBase):
             
             # Clean and normalize the path
             clean_file_path = self.clean_path(file_path)
-            
-            logger.info(f"clean filepath is : {clean_file_path}")
-            logger.info(f"clean_file_path type: {type(clean_file_path)}")
-            
+
             # Ensure clean_file_path is a string (defensive programming)
             if not isinstance(clean_file_path, str):
                 logger.error(f"clean_file_path is not a string: {type(clean_file_path)}, value: {clean_file_path}")
@@ -108,11 +105,8 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                 logger.info(f"Converted to string: {clean_file_path}")
             
             # Create a temporary directory for processing
-            with tempfile.TemporaryDirectory() as temp_dir:
-                logger.info(f"Created temp dir: {temp_dir}")
-                
+            with tempfile.TemporaryDirectory() as temp_dir:                
                 # Download file from sandbox to backend
-                logger.info(f"Getting basename of: {clean_file_path}")
                 basename = os.path.basename(clean_file_path)
                 temp_path = os.path.join(temp_dir, basename)
 
@@ -131,16 +125,12 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                 # Write to temporary file
                 with open(temp_path, 'wb') as f:
                     f.write(content)
-                
-                logger.info(f"Downloaded file to backend: {temp_path}")
-                
+                                
                 # Process the file with LlamaParse - EXACTLY like the working script
                 if self.premium_mode:              
                     parser = LlamaParse(api_key=self.API_KEY, result_type="markdown", premium_mode=True)
-                    logger.info(f"Premium mode: True")
                 else:
                     parser = LlamaParse(api_key=self.API_KEY, result_type="markdown")
-                    logger.info(f"Premium mode: False")
 
 
                 import asyncio
@@ -154,7 +144,6 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                             lambda: parser.parse(temp_path)
                     )
                     logger.info("Successfully completed parser.parse call")
-                    logger.info(f"Result type: {type(result)}")
                 except Exception as parse_error:
                     logger.error(f"Error during parser.parse: {str(parse_error)}")
                     logger.error(f"Parse error type: {type(parse_error)}")
@@ -165,9 +154,6 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                 # Generate and save markdown file with robust error handling
                 output_md_path = os.path.join(temp_dir, "output.md")
                 logger.info(f"Writing markdown to file: {output_md_path}")
-                
-                # Add debug logging for the result type
-                logger.info(f"Result type: {type(result)}")
                 
                 # Initialize markdown_text as string to prevent list concatenation errors
                 markdown_text = ""
@@ -193,9 +179,7 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                     # Write the markdown to file
                     with open(output_md_path, "w") as f:
                         f.write(markdown_text)
-                    
-                    logger.info(f"Successfully wrote markdown to file, length: {len(markdown_text)}")
-                
+                                    
                 except Exception as e:
                     logger.error(f"Error processing markdown from LlamaParse result: {str(e)}")
                     # Set a fallback markdown_text
@@ -211,12 +195,7 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                 except Exception as e:
                     logger.error(f"Error reading markdown file: {str(e)}")
                     markdown_text = f"Error reading parsed content: {str(e)}"
-                logger.info("marked down content")
-                # Ensure markdown_text is always a string (defensive programming)
-                if not isinstance(markdown_text, str):
-                    markdown_text = str(markdown_text)
-                    logger.warning(f"markdown_text was not a string, converted to: {type(markdown_text)}")
-                
+
                 # Generate output path in sandbox (with .md extension)
                 base_filename = os.path.basename(clean_file_path)
                 # Handle file extension removal safely
@@ -237,11 +216,8 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                                 
                 # Upload markdown results back to sandbox
                 self.sandbox.fs.upload_file(markdown_text.encode('utf-8'), parsed_sandbox_path)
-                #logger.info(f"Uploaded parsed markdown to sandbox (succesfully): {parsed_sandbox_path}")
                 
-                # Preview text for response (ensure string type)
                 preview = markdown_text[:500] + "..." if len(markdown_text) > 500 else markdown_text
-                #logger.info(f"Preview {preview}, type {type(preview)}")
                 
                 return self.success_response({
                     "status": "parsed",
