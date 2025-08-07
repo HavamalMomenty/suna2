@@ -1,108 +1,183 @@
+# Supabase CLI
 
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-## Table of Contents (old readme)
+This repository contains all the functionality for Supabase CLI.
 
-- [Extra fields in .env](#extra-fields-in-env)
-- [ Architecture](#project-architecture)
-  - [Backend API](#backend-api)
-  - [Frontend](#frontend)
-  - [Agent Docker](#agent-docker)
-  - [Supabase Database](#supabase-database)
-- [Run](#run)
-- [Manual Setup](#manual-setup)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-## Extra fields added to env
+## Getting started
 
-### LlamaParse Document Parsing
-LLAMA_API_KEY
-LLAMA_PREMIUM_MODE
-### Resights API
-RESIGHTS_TOKEN
+### Install the CLI
 
-## Project Architecture
-
-![Architecture Diagram](docs/images/diagram.png)
-
-Suna consists of four main components:
-
-### Backend API
-
-Python/FastAPI service that handles REST endpoints, thread management, and LLM integration with Anthropic, and others via LiteLLM.
-
-### Frontend
-
-Next.js/React application providing a responsive UI with chat interface, dashboard, etc.
-
-### Agent Docker
-
-Isolated execution environment for every agent - with browser automation, code interpreter, file system access, tool integration, and security features.
-
-### Supabase Database
-
-Handles data persistence with authentication, user management, conversation history, file storage, agent state, analytics, and real-time subscriptions.
-
-### Run
-
-#### Terminal 1
-```bash
-# Navigate to the backend directory
-cd suna2/backend
-```
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-docker compose down && docker compose up --build
+npm i supabase --save-dev
 ```
 
-#### Terminal 2
+To install the beta release channel:
+
 ```bash
-# Navigate to the backend directory
-cd suna2/backend
-
-# Start the API server
-uv run api.py
+npm i supabase@beta --save-dev
 ```
 
-#### Create tunnel
-Start by opening a terminal (command prompt) on local machine. Then paste the command and keep window open. The result should show at local localhost:3000.
-**ssh -L 3000:localhost:3000 -L 8000:localhost:8000 -L 6379:localhost:6379 momenty2@20.124.90.235**
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-### Manual Setup
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-See the [Self-Hosting Guide](./docs/SELF-HOSTING.md) for detailed manual setup instructions.
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-The wizard will guide you through all necessary steps to get your Suna instance up and running. For detailed instructions, troubleshooting tips, and advanced configuration options, see the [Self-Hosting Guide](./docs/SELF-HOSTING.md).
+<details>
+  <summary><b>macOS</b></summary>
 
-## Contributing
+  Available via [Homebrew](https://brew.sh). To install:
 
-We welcome contributions from the community! Please see our [Contributing Guide](./CONTRIBUTING.md) for more details.
+  ```sh
+  brew install supabase/tap/supabase
+  ```
 
-## Acknowledgements
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
 
-### Main Contributors
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
 
-- [Adam Cohen Hillel](https://x.com/adamcohenhillel)
-- [Dat-lequoc](https://x.com/datlqqq)
-- [Marko Kraemer](https://twitter.com/markokraemer)
+<details>
+  <summary><b>Windows</b></summary>
 
-### Technologies
+  Available via [Scoop](https://scoop.sh). To install:
 
-- [Daytona](https://daytona.io/) - Secure agent execution environment
-- [Supabase](https://supabase.com/) - Database and authentication
-- [Playwright](https://playwright.dev/) - Browser automation
-- [OpenAI](https://openai.com/) - LLM provider
-- [Anthropic](https://www.anthropic.com/) - LLM provider
-- [Tavily](https://tavily.com/) - Search capabilities
-- [Firecrawl](https://firecrawl.dev/) - Web scraping capabilities
-- [QStash](https://upstash.com/qstash) - Background job processing and workflows
-- [RapidAPI](https://rapidapi.com/) - API services
-- [Smithery](https://smithery.ai/) - Custom agent development
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
 
-## License
+  To upgrade:
 
-Kortix Suna is licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE) for the full license text.
+  ```powershell
+  scoop update supabase
+  ```
+</details>
 
+<details>
+  <summary><b>Linux</b></summary>
 
+  Available via [Homebrew](https://brew.sh) and Linux packages.
 
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
+```bash
+supabase bootstrap
+```
+
+Or using npx:
+
+```bash
+npx supabase bootstrap
+```
+
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

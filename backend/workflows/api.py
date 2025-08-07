@@ -2,7 +2,7 @@
 Workflow API - REST endpoints for workflow management and execution.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Header, Request, Query
+from fastapi import APIRouter, HTTPException, Depends, Header, Request, Query, Form, File, UploadFile
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 import uuid
@@ -28,7 +28,7 @@ from scheduling.models import (
     SimpleScheduleConfig, CronScheduleConfig
 )
 from webhooks.providers import TelegramWebhookProvider
-from flags.flags import is_enabled
+# Feature flag import removed - workflows always enabled
 
 router = APIRouter()
 
@@ -154,7 +154,9 @@ def _map_db_to_workflow_definition(data: dict) -> WorkflowDefinition:
         agent_id=definition.get('agent_id'),
         is_template=False,
         max_execution_time=definition.get('max_execution_time', 3600),
-        max_retries=definition.get('max_retries', 3)
+        max_retries=definition.get('max_retries', 3),
+        master_prompt=data.get('master_prompt'),
+        login_template=data.get('login_template')
     )
 
 @router.get("/workflows", response_model=List[WorkflowDefinition])
@@ -162,12 +164,6 @@ async def list_workflows(
     user_id: str = Depends(get_current_user_id_from_jwt),
     x_project_id: Optional[str] = Header(None)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """List all workflows for the current user."""
     try:
         client = await db.client
@@ -195,11 +191,6 @@ async def create_workflow(
     request: WorkflowCreateRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Create a new workflow."""
     try:
         client = await db.client
@@ -243,11 +234,6 @@ async def get_workflow(
     workflow_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Get a specific workflow."""
     try:
         client = await db.client
@@ -272,11 +258,6 @@ async def update_workflow(
     request: WorkflowUpdateRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Update a workflow."""
     try:
         client = await db.client
@@ -350,11 +331,6 @@ async def delete_workflow(
     workflow_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Delete a workflow."""
     try:
         client = await db.client
@@ -382,11 +358,6 @@ async def execute_workflow(
     user_id: str = Depends(get_current_user_id_from_jwt),
     deterministic: bool = Query(True, description="Use deterministic executor that follows visual flow exactly")
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Execute a workflow and return execution info."""
     try:
         client = await db.client
@@ -481,12 +452,6 @@ async def stream_workflow_execution(
     token: Optional[str] = None,
     request: Request = None
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Stream the responses of a workflow execution using Redis Lists and Pub/Sub."""
     logger.info(f"Starting stream for workflow execution: {execution_id}")
     
@@ -627,13 +592,13 @@ async def stream_workflow_execution(
                      terminate_stream = True
                      break
                 except Exception as loop_err:
-                    logger.error(f"Error in stream generator main loop for workflow execution {execution_id}: {loop_err}", exc_info=True)
+                    logger.error(f"Error in stream generator main loop for workflow execution {execution_id}: {loop_err}")
                     terminate_stream = True
                     yield f"data: {json.dumps({'type': 'workflow_status', 'status': 'error', 'message': f'Stream failed: {loop_err}'})}\n\n"
                     break
 
         except Exception as e:
-            logger.error(f"Error setting up stream for workflow execution {execution_id}: {e}", exc_info=True)
+            logger.error(f"Error setting up stream for workflow execution {execution_id}: {e}")
             if not initial_yield_complete:
                  yield f"data: {json.dumps({'type': 'workflow_status', 'status': 'error', 'message': f'Failed to start stream: {e}'})}\n\n"
         finally:
@@ -665,12 +630,6 @@ async def get_workflow_flow(
     workflow_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get the visual flow representation of a workflow."""
     try:
         client = await db.client
@@ -713,12 +672,6 @@ async def update_workflow_flow(
     flow: WorkflowFlow,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Update the visual flow of a workflow and convert it to executable definition."""
     try:
         client = await db.client
@@ -822,12 +775,6 @@ async def convert_flow_to_workflow(
     user_id: str = Depends(get_current_user_id_from_jwt),
     x_project_id: Optional[str] = Header(None)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Convert a visual flow to a workflow definition without saving."""
     try:
         if not x_project_id:
@@ -853,12 +800,6 @@ async def validate_workflow_flow_endpoint(
     request: WorkflowValidateRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Validate a workflow flow for errors."""
     try:
         valid, errors = validate_workflow_flow([node.model_dump() if hasattr(node, 'model_dump') else node.dict() for node in request.nodes], [edge.model_dump() if hasattr(edge, 'model_dump') else edge.dict() for edge in request.edges])
@@ -870,12 +811,6 @@ async def validate_workflow_flow_endpoint(
 
 @router.get("/workflows/builder/nodes")
 async def get_builder_nodes(user_id: str = Depends(get_current_user_id_from_jwt)):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get available node types for the workflow builder."""
     try:
         nodes = [
@@ -1015,12 +950,6 @@ async def get_builder_nodes(user_id: str = Depends(get_current_user_id_from_jwt)
 
 @router.get("/workflows/templates")
 async def get_workflow_templates(user_id: str = Depends(get_current_user_id_from_jwt)):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get available workflow templates."""
     try:
         client = await db.client
@@ -1052,12 +981,6 @@ async def create_workflow_from_template(
     user_id: str = Depends(get_current_user_id_from_jwt),
     x_project_id: Optional[str] = Header(None)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Create a new workflow from a template."""
     try:
         if not x_project_id:
@@ -1111,12 +1034,6 @@ async def create_workflow_from_template(
 async def get_scheduler_status(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get information about currently scheduled workflows."""
     try:
         scheduled_workflows = await workflow_scheduler.get_scheduled_workflows()
@@ -1140,12 +1057,6 @@ async def get_scheduler_status(
 
 @router.post("/workflows/scheduler/start")
 async def start_scheduler(user_id: str = Depends(get_current_user_id_from_jwt)):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Start the workflow scheduler."""
     try:
         await workflow_scheduler.start()
@@ -1156,12 +1067,6 @@ async def start_scheduler(user_id: str = Depends(get_current_user_id_from_jwt)):
 
 @router.post("/workflows/scheduler/stop")
 async def stop_scheduler(user_id: str = Depends(get_current_user_id_from_jwt)):
-    if not await is_enabled("workflows"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Stop the workflow scheduler."""
     try:
         await workflow_scheduler.stop()
@@ -1261,3 +1166,311 @@ async def _setup_telegram_webhooks_for_workflow(workflow: WorkflowDefinition, ba
                 
     except Exception as e:
         logger.error(f"Error setting up Telegram webhooks for workflow {workflow.id}: {e}")
+
+
+# ============================================================================
+# WORKFLOW BUILDER API ENDPOINTS
+# ============================================================================
+
+from .models import (
+    WorkflowBuilderRequest, WorkflowBuilderUpdateRequest, WorkflowBuilderData,
+    WorkflowFile, WorkflowFileUploadResponse
+)
+from services.workflow_builder_service import get_workflow_builder_service, WorkflowBuilderService
+from fastapi import File, UploadFile
+
+
+@router.post("/workflows/builder", response_model=WorkflowDefinition)
+async def create_workflow_from_builder(
+    request: WorkflowBuilderRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Create a new workflow using the workflow builder."""
+    
+    try:
+        logger.info(
+            "Creating workflow from builder",
+            user_id=user_id,
+            project_id=request.project_id,
+            title=request.workflow_data.title
+        )
+        
+        workflow = await service.create_workflow_from_builder(
+            request.workflow_data, 
+            request.project_id, 
+            user_id
+        )
+        
+        return workflow
+        
+    except ValueError as e:
+        logger.error(f"Validation error creating workflow: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating workflow from builder: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create workflow")
+
+
+@router.put("/workflows/{workflow_id}/builder", response_model=WorkflowDefinition)
+async def update_workflow_from_builder(
+    workflow_id: str,
+    request: WorkflowBuilderUpdateRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Update an existing workflow using the workflow builder."""
+    
+    try:
+        workflow = await service.update_workflow_from_builder(
+            workflow_id,
+            request.workflow_data,
+            user_id
+        )
+        return workflow
+        
+    except ValueError as e:
+        logger.error(f"Validation error updating workflow: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error updating workflow from builder: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update workflow")
+
+
+@router.get("/workflows/{workflow_id}/builder", response_model=WorkflowBuilderData)
+async def get_workflow_builder_data(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Get workflow data for the builder interface."""
+    
+    try:
+        data = await service.get_workflow_builder_data(workflow_id, user_id)
+        return data
+        
+    except ValueError as e:
+        logger.error(f"Workflow not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error getting workflow builder data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workflow data")
+
+
+@router.post("/workflows/{workflow_id}/files", response_model=WorkflowFileUploadResponse)
+async def upload_workflow_file(
+    workflow_id: str,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Upload a supplementary file for a workflow."""
+    
+    try:
+        # Validate file type and size
+        allowed_types = {
+            'text/markdown', 
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'application/json'
+        }
+        
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File type not allowed. Allowed types: {', '.join(allowed_types)}"
+            )
+        
+        if file.size and file.size > 50 * 1024 * 1024:  # 50MB limit
+            raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+        
+        workflow_file = await service.upload_file(workflow_id, file, user_id)
+        
+        return WorkflowFileUploadResponse(
+            file_id=workflow_file.id or "",
+            filename=workflow_file.filename,
+            file_size=workflow_file.file_size or 0,
+            mime_type=workflow_file.mime_type or "",
+            parsing_status=workflow_file.parsing_status,
+            message="File uploaded successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Validation error uploading file: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error uploading file: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload file")
+
+
+@router.delete("/workflows/{workflow_id}/files/{file_id}")
+async def delete_workflow_file(
+    workflow_id: str,
+    file_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Delete a workflow file."""
+    
+    try:
+        await service.delete_file(file_id, user_id)
+        return {"message": "File deleted successfully"}
+        
+    except ValueError as e:
+        logger.error(f"File not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error deleting file: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete file")
+
+
+@router.delete("/workflows/{workflow_id}")
+async def delete_workflow(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Delete a workflow and all associated files."""
+    
+    try:
+        await service.delete_workflow(workflow_id, user_id)
+        return {"message": "Workflow deleted successfully"}
+        
+    except ValueError as e:
+        logger.error(f"Workflow not found: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error deleting workflow: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete workflow")
+
+
+@router.get("/workflows/{workflow_id}/files", response_model=List[WorkflowFile])
+async def get_workflow_files(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Get all files for a workflow."""
+    
+    try:
+        # Verify access first
+        await service._verify_workflow_access(workflow_id, user_id)
+        
+        # Get files
+        files = await service._get_workflow_files(workflow_id)
+        return files
+        
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except Exception as e:
+        logger.error(f"Error getting workflow files: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workflow files")
+
+
+@router.get("/workflows/{workflow_id}/files/{file_id}/content")
+async def get_workflow_file_content(
+    workflow_id: str,
+    file_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Get the content of a specific workflow file."""
+    
+    try:
+        # Verify access first
+        await service._verify_workflow_access(workflow_id, user_id)
+        
+        # Get file content from Supabase Storage
+        file_content = await service.get_file_content(workflow_id, file_id, user_id)
+        
+        # Return the file content as a response
+        from fastapi.responses import Response
+        return Response(
+            content=file_content,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename=workflow_file_{file_id}"
+            }
+        )
+        
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting workflow file content: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workflow file content")
+
+
+@router.post("/workflows/builder/with-files", response_model=WorkflowDefinition)
+async def create_workflow_from_builder_with_files(
+    workflow_data: str = Form(...),  # JSON string of WorkflowBuilderData
+    project_id: str = Form(...),
+    files: List[UploadFile] = File(default=[]),
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Create a workflow from builder with file uploads in a single request."""
+    
+    try:
+        # Parse the JSON workflow data
+        import json
+        workflow_data_dict = json.loads(workflow_data)
+        workflow_data_dict.pop('credentials', None)  # Remove credentials
+        workflow_builder_data = WorkflowBuilderData(**workflow_data_dict)
+        
+        # Create the workflow first
+        workflow = await service.create_workflow_from_builder(
+            workflow_builder_data, 
+            project_id, 
+            user_id
+        )
+        
+        # Upload files if any were provided
+        if files:
+            for file in files:
+                # Validate file type and size (same as individual upload endpoint)
+                allowed_types = {
+                    'text/markdown', 
+                    'application/pdf',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'text/plain',
+                    'application/json'
+                }
+                
+                if file.content_type not in allowed_types:
+                    logger.warning(f"Skipping file {file.filename} - invalid type: {file.content_type}")
+                    continue
+                
+                if file.size and file.size > 50 * 1024 * 1024:  # 50MB limit
+                    logger.warning(f"Skipping file {file.filename} - too large: {file.size} bytes")
+                    continue
+                
+                # Upload the file
+                await service.upload_file(workflow.id, file, user_id)
+        
+        return workflow
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in workflow_data: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid workflow data format")
+    except Exception as e:
+        logger.error(f"Error creating workflow with files: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

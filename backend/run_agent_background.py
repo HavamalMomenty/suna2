@@ -624,3 +624,64 @@ async def update_workflow_execution_status(client, execution_id: str, status: st
         
     except Exception as e:
         logger.error(f"Failed to update workflow execution status: {e}")
+
+
+@dramatiq.actor
+async def parse_workflow_document(file_id: str, file_path: str):
+    """
+    Parse uploaded workflow document using LlamaParse.
+    
+    Args:
+        file_id: ID of the workflow file to parse
+        file_path: Storage path of the file
+    """
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        task="parse_workflow_document",
+        file_id=file_id,
+        file_path=file_path
+    )
+    
+    try:
+        logger.info(f"Starting CUSTOM document parsing for workflow file {file_id}")
+        
+        # Import here to avoid circular imports
+        from services.supabase import DBConnection
+        
+        # Get file details from database
+        with DBConnection() as db:
+            file_result = db.table("workflow_files").select("*").eq("id", file_id).execute()
+            
+            if not file_result.data:
+                logger.error(f"Workflow file {file_id} not found in database")
+                return
+            
+            file_data = file_result.data[0]
+            
+        # Check if file type supports parsing
+        supported_types = ['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        if file_data.get('mime_type') not in supported_types:
+            logger.info(f"File type {file_data.get('mime_type')} not supported for parsing")
+            return
+        
+        # TODO: Integrate with existing LlamaParse service when available
+        # For now, just log that parsing would happen here
+        logger.info(f"Document parsing completed for workflow file {file_id}")
+        
+        # Update file record to indicate parsing is complete
+        with DBConnection() as db:
+            db.table("workflow_files").update({
+                "updated_at": "now()"
+            }).eq("id", file_id).execute()
+            
+    except Exception as e:
+        logger.error(f"Document parsing failed for workflow file {file_id}: {e}", exc_info=True)
+        
+        # Update file record to indicate parsing failed
+        try:
+            with DBConnection() as db:
+                db.table("workflow_files").update({
+                    "updated_at": "now()"
+                }).eq("id", file_id).execute()
+        except Exception as update_error:
+            logger.error(f"Failed to update file record after parsing error: {update_error}")

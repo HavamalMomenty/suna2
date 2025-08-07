@@ -206,3 +206,6 @@ backend/.env
 frontend/.env.local
 backend/.env.template
 parse_pdf.py
+.env.production.backup
+.env.local.backup
+.env.local.production.backup

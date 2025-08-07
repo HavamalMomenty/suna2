@@ -138,6 +138,7 @@ export type Workflow = {
   status: 'draft' | 'active' | 'paused' | 'disabled' | 'archived';
   project_id: string;
   account_id: string;
+  master_prompt?: string; // Add master_prompt field
   definition: {
     name: string;
     description: string;
@@ -2014,6 +2015,7 @@ export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
       status: workflowData.state?.toLowerCase() || 'draft',
       project_id: workflowData.project_id,
       account_id: workflowData.created_by || '',
+      master_prompt: workflowData.master_prompt, // Include master_prompt field
       definition: {
         name: workflowData.name,
         description: workflowData.description || '',
@@ -2500,6 +2502,121 @@ export const cancelExecution = async (executionId: string): Promise<void> => {
   } catch (error) {
     console.error('Failed to cancel execution:', error);
     handleApiError(error, { operation: 'cancel execution', resource: `execution ${executionId}` });
+    throw error;
+  }
+};
+
+export const executeWorkflowWithBuilderData = async (
+  workflowId: string,
+  projectId: string
+): Promise<{ thread_id: string; agent_run_id: string }> => {
+  try {
+    console.log('🔧 Starting workflow execution with builder data:', { workflowId, projectId });
+    
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new NoAccessTokenAvailableError();
+    }
+
+    console.log('✅ Authentication successful');
+
+    // Step 1: Get workflow builder data (master prompt and files)
+    console.log('📋 Step 1: Getting workflow builder data...');
+    const workflowDataResponse = await fetch(`${API_URL}/workflows/${workflowId}/builder`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    console.log('📋 Workflow data response status:', workflowDataResponse.status);
+
+    if (!workflowDataResponse.ok) {
+      const errorText = await workflowDataResponse.text().catch(() => 'No error details available');
+      console.error(`❌ Error getting workflow data: ${workflowDataResponse.status} ${workflowDataResponse.statusText}`, errorText);
+      throw new Error(`Error getting workflow data: ${workflowDataResponse.statusText} (${workflowDataResponse.status})`);
+    }
+
+    const workflowData = await workflowDataResponse.json();
+    console.log('📋 Workflow data received:', workflowData);
+    
+    const { master_prompt, files } = workflowData;
+    console.log('📋 Master prompt:', master_prompt ? 'Present' : 'Missing');
+    console.log('📋 Files count:', files ? files.length : 0);
+
+    // Step 2: Prepare files for upload (if any)
+    const formData = new FormData();
+    formData.append('prompt', master_prompt || '');
+    formData.append('stream', 'false');
+
+    if (files && files.length > 0) {
+      console.log('📁 Step 2: Preparing files for upload...');
+      for (const file of files) {
+        try {
+          console.log(`📁 Processing file: ${file.filename} (ID: ${file.id})`);
+          
+          // Get the file content from Supabase Storage
+          const fileContentResponse = await fetch(`${API_URL}/workflows/${workflowId}/files/${file.id}/content`, {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          console.log(`📁 File content response status for ${file.filename}:`, fileContentResponse.status);
+
+          if (fileContentResponse.ok) {
+            const fileBlob = await fileContentResponse.blob();
+            console.log(`📁 File blob size for ${file.filename}:`, fileBlob.size);
+            
+            // Add file to FormData
+            formData.append('files', fileBlob, file.filename);
+            console.log(`✅ File ${file.filename} prepared for upload`);
+          } else {
+            console.warn(`⚠️ Failed to get file content for ${file.filename}:`, fileContentResponse.statusText);
+          }
+        } catch (fileError) {
+          console.warn(`⚠️ Error preparing file ${file.filename}:`, fileError);
+        }
+      }
+    } else {
+      console.log('📁 No files to upload');
+    }
+
+    // Step 3: Use the initiate_agent_with_files endpoint
+    console.log('🤖 Step 3: Initiating agent with files...');
+    const initiateResponse = await fetch(`${API_URL}/agent/initiate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: formData,
+    });
+
+    console.log('🤖 Initiate response status:', initiateResponse.status);
+
+    if (!initiateResponse.ok) {
+      const errorText = await initiateResponse.text().catch(() => 'No error details available');
+      console.error(`❌ Error initiating agent: ${initiateResponse.status} ${initiateResponse.statusText}`, errorText);
+      throw new Error(`Error initiating agent: ${initiateResponse.statusText} (${initiateResponse.status})`);
+    }
+
+    const initiateData = await initiateResponse.json();
+    console.log('🤖 Agent initiated successfully:', initiateData);
+
+    const result = {
+      thread_id: initiateData.thread_id,
+      agent_run_id: initiateData.agent_run_id || ''
+    };
+    
+    console.log('✅ Workflow execution completed successfully:', result);
+    return result;
+
+  } catch (error) {
+    console.error('❌ Failed to execute workflow with builder data:', error);
+    handleApiError(error, { operation: 'execute workflow with builder data', resource: `workflow ${workflowId}` });
     throw error;
   }
 };

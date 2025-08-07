@@ -934,6 +934,10 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {
           workflowId={workflowId}
           onWorkflowNameChange={setWorkflowName}
           onWorkflowDescriptionChange={setWorkflowDescription}
+          onWorkflowDeleted={() => {
+            // Navigate back or refresh the workflow list
+            router.push('/workflows');
+          }}
         />
       </div>
     </>
