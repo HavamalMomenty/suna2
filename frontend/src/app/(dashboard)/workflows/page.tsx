@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -55,6 +55,8 @@ export default function WorkflowsPage() {
   const { state, setOpen, setOpenMobile } = useSidebar();
   const updateWorkflowStatusMutation = useUpdateWorkflowStatus();
 
+
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -91,15 +93,22 @@ export default function WorkflowsPage() {
       const result = await executeWorkflowWithBuilderData(workflowId, projectId);
       
       toast.success("Workflow execution started! Redirecting to chat...");
-              // Workflow execution completed
       
       if (result.thread_id) {
+        // Don't clear the executing state when redirecting - user won't see the workflows page anyway
         router.push(`/projects/${projectId}/thread/${result.thread_id}`);
+      } else {
+        // Only clear if no redirect happened
+        setExecutingWorkflows(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(workflowId);
+          return newSet;
+        });
       }
     } catch (err) {
       console.error('Error executing workflow:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to execute workflow');
-    } finally {
+      // Clear executing state on error
       setExecutingWorkflows(prev => {
         const newSet = new Set(prev);
         newSet.delete(workflowId);
@@ -454,10 +463,30 @@ export default function WorkflowsPage() {
                   style={{ backgroundColor: getWorkflowColor(workflow.status) }}
                 >
                   <div className="text-3xl text-white drop-shadow-sm">
-                    <WorkflowIcon />
+                    {executingWorkflows.has(workflow.id) ? (
+                      <Loader2 className="animate-spin rounded-full h-12 w-12" />
+                    ) : (
+                      <WorkflowIcon />
+                    )}
                   </div>
+
                   <div className="absolute top-3 right-3">
                     {getStatusIcon(workflow.status)}
+                  </div>
+                  <div className="absolute top-3 left-3">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                      onClick={() => handleRunWorkflow(workflow.id)}
+                    >
+                      {executingWorkflows.has(workflow.id) ? (
+                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                    </Button>
                   </div>
                 </div>
                 <div className="p-4">
@@ -520,10 +549,24 @@ export default function WorkflowsPage() {
                     </p>
                     <div className="flex gap-2 pt-2">
                       <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleRunWorkflow(workflow.id)}
+                        disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                        className="flex-1"
+                      >
+                        {executingWorkflows.has(workflow.id) ? (
+                          <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                        ) : (
+                          <Play className="h-3 w-3" />
+                        )}
+                        {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
-                        className="w-full"
+                        className="flex-1"
                       >
                         <Settings className="h-3 w-3" />
                         Configure
@@ -571,7 +614,7 @@ export default function WorkflowsPage() {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteWorkflow(workflow.id)}
-                              className="bg-destructive text-white hover:bg-destructive/90"
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete Workflow
                             </AlertDialogAction>

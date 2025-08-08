@@ -1,4 +1,30 @@
 
+5: Dashboard:
+    Add a way to organize conversations. 
+
+    Feature overview:
+        Each conversation can optionally be moved, organized in a folder corrosponding to a specific property. We call this the property conv folder.
+            Feature works by 1. Adding a new property, give it a name (required), and a BFE number (optional) and an other (optional) field, with other supplamentary information.
+    
+        Each folder is shown at the top of the left sidebar.
+            1 Conversations outside the property conv folde can be moved to this (drag and drop)
+            2 All Conversations within the property conv folder have access to the fields described.
+            3 Similarly 
+
+
+
+    1. Create a design doc describing how currently conversations are stored and shown in the UI:
+        Create seperate sections for how conversations are implemented in the UI part (frontend) and how its stored in the database / backend.
+        Make sure to gain a proper overview of relevant files!
+
+    2. Create a new method of organizing conversations:
+        Properties of this organizing 
+
+
+
+
+Already implemented: 
+
 1: No more than 3 workflows are visible at a time. 
 Solution: Each new workflow should stack vertically after 3, ie. in each row as currently, there is room for 3 workflows, after having added the 3 workflows new workflows should be added below also in rows of 3, there should be no limitation on this. 
 
@@ -14,12 +40,3 @@ Note to self: i will write in the master prompt that node/suna should prompt the
 
 4: Creating new workflows still does not work when having uploaded a file. The uploaded files dont show up again when inspecting the workflow. 
 
-
-5: Dashboard:
-    Add a way to organize conversations. 
-    1. Create a design doc describing how currently conversations are stored. 
-        Create seperate sections for how conversations are implemented in the UI part (frontend) and how its stored in the database / backend.
-        Make sure to gain a proper overview of relevant files!
-
-    2. Create a new method of organizing conversations:
-        Properties of this organizing 

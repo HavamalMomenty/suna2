@@ -933,10 +933,17 @@ export const streamAgent = (
             `[STREAM] Agent run ${agentRunId} is not running (status: ${status.status}), not creating stream`,
           );
           nonRunningAgentRuns.add(agentRunId);
-          callbacks.onError(
-            `Agent run ${agentRunId} is not running (status: ${status.status})`,
-          );
-          callbacks.onClose();
+          
+          // Don't call onError for completed status - this is expected behavior
+          if (status.status === 'completed') {
+            console.log(`[STREAM] Agent run ${agentRunId} completed before streaming started. This is normal for quick tasks.`);
+            callbacks.onClose();
+          } else {
+            callbacks.onError(
+              `Agent run ${agentRunId} is not running (status: ${status.status})`,
+            );
+            callbacks.onClose();
+          }
           return;
         }
       } catch (err) {
