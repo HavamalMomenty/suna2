@@ -407,12 +407,6 @@ export function useAgentStream(
         errorMessage = 'Stream connection error';
       }
 
-      console.error('[useAgentStream] Streaming error:', errorMessage, err);
-      setError(errorMessage);
-      
-      // Show error toast with longer duration
-      toast.error(errorMessage, { duration: 15000 });
-
       const runId = currentRunIdRef.current;
       if (!runId) {
         console.warn(
@@ -421,6 +415,25 @@ export function useAgentStream(
         finalizeStream('error'); // Finalize with generic error if no runId
         return;
       }
+
+      // Check if this is a "not running" error (agent completed before streaming started)
+      const isNotRunningError = 
+        errorMessage.includes('not running') || 
+        errorMessage.includes('is not running') ||
+        errorMessage.includes('status: completed');
+
+      if (isNotRunningError) {
+        console.log(`[useAgentStream] Agent run ${runId} completed before streaming started. Finalizing as completed.`);
+        // Don't show error toast for this case - it's expected behavior
+        finalizeStream('completed', runId);
+        return;
+      }
+
+      // For actual errors, log and show error toast
+      console.error('[useAgentStream] Streaming error:', errorMessage, err);
+      setError(errorMessage);
+      toast.error(errorMessage, { duration: 15000 });
+      finalizeStream('error', runId);
 
     },
     [finalizeStream],
@@ -487,12 +500,22 @@ export function useAgentStream(
           errorMessage.includes('404') ||
           errorMessage.includes('does not exist');
 
+        const isNotRunningError =
+          errorMessage.includes('not running') ||
+          errorMessage.includes('is not running');
+
         if (isNotFoundError) {
           console.log(
             `[useAgentStream] Agent run ${runId} not found after stream close. Finalizing.`,
           );
           // Revert to agent_not_running for this specific case
           finalizeStream('agent_not_running', runId);
+        } else if (isNotRunningError) {
+          console.log(
+            `[useAgentStream] Agent run ${runId} not running after stream close. Finalizing as completed.`,
+          );
+          // Treat as completed if agent is not running
+          finalizeStream('completed', runId);
         } else {
           // For other errors checking status, finalize with generic error
           finalizeStream('error', runId);
@@ -556,14 +579,21 @@ export function useAgentStream(
         if (!isMountedRef.current) return; // Check mount status after async call
 
         if (agentStatus.status !== 'running') {
-          console.warn(
-            `[useAgentStream] Agent run ${runId} is not in running state (status: ${agentStatus.status}). Cannot start stream.`,
+          console.log(
+            `[useAgentStream] Agent run ${runId} is not in running state (status: ${agentStatus.status}). Finalizing stream.`,
           );
-          setError(`Agent run is not running (status: ${agentStatus.status})`);
-          finalizeStream(
-            mapAgentStatus(agentStatus.status) || 'agent_not_running',
-            runId,
-          );
+          
+          // Don't show error for completed status - this is expected behavior
+          if (agentStatus.status === 'completed') {
+            console.log(`[useAgentStream] Agent run ${runId} completed before streaming started. This is normal for quick tasks.`);
+            finalizeStream('completed', runId);
+          } else {
+            setError(`Agent run is not running (status: ${agentStatus.status})`);
+            finalizeStream(
+              mapAgentStatus(agentStatus.status) || 'agent_not_running',
+              runId,
+            );
+          }
           return;
         }
 

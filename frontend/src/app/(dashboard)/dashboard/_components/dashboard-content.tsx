@@ -31,6 +31,10 @@ import { useModal } from '@/hooks/use-modal-store';
 import { Examples } from './suggestions/examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { useWorkflowFiles } from '@/hooks/react-query/workflows/use-workflow-builder';
+import { downloadWorkflowFiles } from '@/lib/workflow-utils';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -143,6 +147,63 @@ export function DashboardContent() {
     }
   };
 
+  const handleWorkflowExecution = async (workflow: any) => {
+    try {
+      console.log('🔄 Workflow execution started:', workflow);
+      console.log('📝 Master prompt:', workflow.master_prompt);
+      
+      // Fetch workflow files from the API first
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('No access token available');
+      }
+
+      const filesResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/workflows/${workflow.id}/files`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (filesResponse.ok) {
+        const workflowFiles = await filesResponse.json();
+        console.log('📄 Workflow files found:', workflowFiles);
+        
+        if (workflowFiles && workflowFiles.length > 0) {
+          // Download workflow files
+          const downloadedFiles = await downloadWorkflowFiles(workflow.id, workflowFiles);
+          
+          // Add files to the chat input
+          downloadedFiles.forEach(file => {
+            chatInputRef.current?.addFile(file);
+          });
+          
+          console.log('✅ Added', downloadedFiles.length, 'files to chat input');
+          toast.success(`Loaded ${downloadedFiles.length} file(s) from workflow`);
+          
+          // Wait a moment for files to be properly added to the chat input
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      // Directly trigger the conversation with the master prompt
+      console.log('🚀 Calling handleSubmit with master prompt:', workflow.master_prompt);
+      
+      // Debug: Check if files are in chat input before submission
+      const pendingFiles = chatInputRef.current?.getPendingFiles() || [];
+      console.log('📋 Files in chat input before submission:', pendingFiles.length, pendingFiles.map(f => f.name));
+      
+      await handleSubmit(workflow.master_prompt || '');
+      
+    } catch (error) {
+      console.error('❌ Error executing workflow:', error);
+      toast.error('Failed to execute workflow. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const pendingPrompt = localStorage.getItem(PENDING_PROMPT_KEY);
@@ -223,7 +284,7 @@ export function DashboardContent() {
             />
           </div>
 
-          <Examples onSelectPrompt={setInputValue} />
+          <Examples onSelectPrompt={setInputValue} onSelectWorkflow={handleWorkflowExecution} />
         </div>
 
         <BillingErrorAlert

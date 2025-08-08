@@ -12,9 +12,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Webhook, Clock, Zap, Bot, Wrench } from "lucide-react";
+import { Settings, Webhook, Clock, Zap, Bot, Wrench, Trash2, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ScheduleManager } from "./scheduling/ScheduleManager";
+import { useDeleteWorkflow } from "@/hooks/react-query/workflows/use-workflow-builder";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface WorkflowSettingsProps {
   open: boolean;
@@ -26,6 +38,7 @@ interface WorkflowSettingsProps {
   workflowId?: string;
   onWorkflowNameChange: (name: string) => void;
   onWorkflowDescriptionChange: (description: string) => void;
+  onWorkflowDeleted?: () => void;
 }
 
 export default function WorkflowSettings({ 
@@ -37,9 +50,24 @@ export default function WorkflowSettings({
   workflowDescription,
   workflowId,
   onWorkflowNameChange,
-  onWorkflowDescriptionChange
+  onWorkflowDescriptionChange,
+  onWorkflowDeleted
 }: WorkflowSettingsProps) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const deleteWorkflow = useDeleteWorkflow();
+
+  const handleDeleteWorkflow = async () => {
+    if (!workflowId) return;
+    
+    try {
+      await deleteWorkflow.mutateAsync(workflowId);
+      onWorkflowDeleted?.();
+      onOpenChange(false);
+    } catch (error) {
+      // Error handling is done in the mutation hook
+      console.error('Error deleting workflow:', error);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,6 +181,66 @@ export default function WorkflowSettings({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Danger Zone - Only show for existing workflows */}
+              {workflowId && (
+                <Card className="border-destructive/20 bg-destructive/5">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      Danger Zone
+                    </CardTitle>
+                    <CardDescription>
+                      Irreversible actions that will permanently affect this workflow
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-4 border border-destructive/20 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <h4 className="font-medium text-destructive">Delete Workflow</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Permanently delete this workflow and all associated files. This action cannot be undone.
+                            </p>
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                className="ml-4 shrink-0"
+                                disabled={deleteWorkflow.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{workflowName}"? This will permanently 
+                                  remove the workflow and all associated files. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={handleDeleteWorkflow}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete Workflow
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="scheduling" className="space-y-4 p-1">

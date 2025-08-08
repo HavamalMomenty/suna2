@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Dict, Any, Optional, Literal, Union
 from datetime import datetime
 
@@ -77,6 +77,8 @@ class WorkflowDefinition(BaseModel):
     is_template: bool = False
     max_execution_time: int = 3600
     max_retries: int = 3
+    master_prompt: Optional[str] = None  # Added for workflow builder
+    login_template: Optional[str] = None  # Added for workflow builder
 
     nodes: Optional[List['WorkflowNode']] = None
     edges: Optional[List['WorkflowEdge']] = None
@@ -147,4 +149,44 @@ class WorkflowValidateResponse(BaseModel):
     valid: bool
     errors: List[str]
 
-WorkflowDefinition.model_rebuild() 
+class WorkflowFile(BaseModel):
+    """Model for workflow supplementary files."""
+    id: Optional[str] = None
+    workflow_id: str
+    filename: str
+    file_path: str
+    file_size: Optional[int] = None
+    file_type: str
+    mime_type: Optional[str] = None
+    parsing_status: Literal['pending', 'processing', 'completed', 'failed'] = 'pending'
+    parsed_content: Optional[str] = None
+    uploaded_at: Optional[datetime] = None
+    created_by: str
+
+class WorkflowBuilderData(BaseModel):
+    """Model for complete workflow builder data."""
+    title: str
+    description: Optional[str] = None
+    master_prompt: Optional[str] = None
+    login_template: Optional[str] = None
+    files: List[WorkflowFile] = []
+
+class WorkflowBuilderRequest(BaseModel):
+    """Request model for creating a workflow from builder."""
+    workflow_data: WorkflowBuilderData
+    project_id: str
+
+class WorkflowBuilderUpdateRequest(BaseModel):
+    """Request model for updating a workflow from builder."""
+    workflow_data: WorkflowBuilderData
+
+class WorkflowFileUploadResponse(BaseModel):
+    """Response model for file upload."""
+    file_id: str
+    filename: str
+    file_size: int
+    mime_type: str
+    parsing_status: str
+    message: str
+
+WorkflowDefinition.model_rebuild()

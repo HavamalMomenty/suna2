@@ -11,4 +11,7 @@ export const workflowKeys = {
   tools: () => [...workflowKeys.all, 'tools'] as const,
   mcpTools: () => [...workflowKeys.all, 'mcp-tools'] as const,
   builderNodes: () => [...workflowKeys.all, 'builder-nodes'] as const,
-}; 
+  // Workflow Builder keys
+  builderData: (id: string) => [...workflowKeys.detail(id), 'builder-data'] as const,
+  files: (workflowId: string) => [...workflowKeys.detail(workflowId), 'files'] as const,
+};
