@@ -209,3 +209,5 @@ parse_pdf.py
 .env.production.backup
 .env.local.backup
 .env.local.production.backup
+
+frontend/public/Instruction_documents
