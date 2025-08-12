@@ -1120,8 +1120,18 @@ export const siteConfig = {
     {
       title: 'Node',
       links: [
-        { id: 1, title: 'About', url: '' },
-        { id: 3, title: 'Contact', url: '' },
+        { id: 1, title: 'About', url: '/about' },
+        { id: 3, title: 'Contact', url: '/contact' },
+      ],
+    },
+    {
+      title: 'Contact Us',
+      links: [
+        {
+          id: 7,
+          title: 'Email',
+          url: 'mailto:adrian@momenty.dk',
+        },
       ],
     },
     {
