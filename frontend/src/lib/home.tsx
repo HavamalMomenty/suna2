@@ -102,7 +102,7 @@ export const siteConfig = {
             'Fewer errors and faster decisions.',
           ],
         },
-        partner: 'Built with Thylander (Copenhagen) as our MVP partner.',
+        partner: '',
       },
       {
         id: 2,
