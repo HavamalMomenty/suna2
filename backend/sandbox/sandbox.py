@@ -1,3 +1,4 @@
+import os
 from daytona_sdk import Daytona, DaytonaConfig, CreateSandboxFromImageParams, Sandbox, SessionExecuteRequest, Resources, SandboxState
 from dotenv import load_dotenv
 from utils.logger import logger
@@ -95,6 +96,7 @@ def create_sandbox(password: str, project_id: str = None):
         public=True,
         labels=labels,
         env_vars={
+            # Browser configuration
             "CHROME_PERSISTENT_SESSION": "true",
             "RESOLUTION": "1024x768x24",
             "RESOLUTION_WIDTH": "1024",
@@ -105,12 +107,16 @@ def create_sandbox(password: str, project_id: str = None):
             "CHROME_USER_DATA": "",
             "CHROME_DEBUGGING_PORT": "9222",
             "CHROME_DEBUGGING_HOST": "localhost",
-            "CHROME_CDP": ""
+            "CHROME_CDP": "",
+            
+            # LlamaParse configuration - pass through from host environment
+            #"USE_LLAMA_PARSE": os.getenv("USE_LLAMA_PARSE", "true"),
+            #"LLAMA_API_KEY": os.getenv("LLAMA_API_KEY", "")
         },
         resources=Resources(
-            cpu=2,
-            memory=4,
-            disk=5,
+            cpu=1,
+            memory=1,
+            disk=2,
         ),
         auto_stop_interval=15,
         auto_archive_interval=24 * 60,

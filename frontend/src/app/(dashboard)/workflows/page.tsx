@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -17,13 +17,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getWorkflows, executeWorkflow, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, type Workflow } from "@/lib/api";
+import { getWorkflows, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, executeWorkflowWithBuilderData, type Workflow } from "@/lib/api";
 import { useUpdateWorkflowStatus } from "@/hooks/react-query/workflows/use-workflows";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useFeatureFlag } from "@/lib/feature-flags";
+import { WorkflowBuilderModal } from "@/components/workflows/WorkflowBuilderModal";
 
 export default function WorkflowsPage() {
   const { enabled: workflowsEnabled, loading: flagLoading } = useFeatureFlag("workflows");
@@ -46,10 +47,15 @@ export default function WorkflowsPage() {
   const [deletingWorkflows, setDeletingWorkflows] = useState<Set<string>>(new Set());
   const [togglingWorkflows, setTogglingWorkflows] = useState<Set<string>>(new Set());
 
+  // Workflow Builder Modal State
+  const [builderModalOpen, setBuilderModalOpen] = useState(false);
+  const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
+  const [builderMode, setBuilderMode] = useState<'create' | 'edit'>('create');
+
   const { state, setOpen, setOpenMobile } = useSidebar();
   const updateWorkflowStatusMutation = useUpdateWorkflowStatus();
 
-  const initialLayoutAppliedRef = useRef(false);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -82,16 +88,27 @@ export default function WorkflowsPage() {
     }
     try {
       setExecutingWorkflows(prev => new Set(prev).add(workflowId));
-      const result = await executeWorkflow(workflowId);
+      
+      // Use the new workflow execution function that includes master prompt and files
+      const result = await executeWorkflowWithBuilderData(workflowId, projectId);
+      
       toast.success("Workflow execution started! Redirecting to chat...");
-      console.log('Workflow execution started:', result);
+      
       if (result.thread_id) {
+        // Don't clear the executing state when redirecting - user won't see the workflows page anyway
         router.push(`/projects/${projectId}/thread/${result.thread_id}`);
+      } else {
+        // Only clear if no redirect happened
+        setExecutingWorkflows(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(workflowId);
+          return newSet;
+        });
       }
     } catch (err) {
       console.error('Error executing workflow:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to execute workflow');
-    } finally {
+      // Clear executing state on error
       setExecutingWorkflows(prev => {
         const newSet = new Set(prev);
         newSet.delete(workflowId);
@@ -279,6 +296,38 @@ export default function WorkflowsPage() {
         return "#8b5cf6";
     }
   };
+
+  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
+    setBuilderModalOpen(true);
+    setBuilderWorkflowId(workflowId);
+    setBuilderMode(mode);
+  };
+
+  const handleCloseBuilderModal = () => {
+    setBuilderModalOpen(false);
+    setBuilderWorkflowId(null);
+    setBuilderMode('create');
+  };
+
+  const fetchWorkflows = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const workflowsData = await getWorkflows(projectId);
+              // Workflows fetched successfully
+      setWorkflows(workflowsData);
+    } catch (err) {
+      console.error('Error loading workflows:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load workflows');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+            // Workflows state updated
+  }, [workflows]);
+
   if (flagLoading) {
     return (
       <div className="container max-w-7xl mx-auto px-4 py-8">
@@ -290,8 +339,8 @@ export default function WorkflowsPage() {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, index) => (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
+          {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
               <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
                 <Skeleton className="h-24 w-full rounded-xl" />
@@ -321,8 +370,8 @@ export default function WorkflowsPage() {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, index) => (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
+          {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
               <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
                 <Skeleton className="h-24 w-full rounded-xl" />
@@ -372,7 +421,7 @@ export default function WorkflowsPage() {
             Create and manage automated agent workflows
           </p>
         </div>
-        <Button onClick={handleCreateWorkflow} disabled={loading || creating}>
+        <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={loading || creating}>
           {creating ? (
             <Loader2 className="animate-spin rounded-full h-4 w-4" />
           ) : (
@@ -392,7 +441,7 @@ export default function WorkflowsPage() {
             <p className="text-muted-foreground mb-4">
               Create your first workflow to get started with automation
             </p>
-            <Button onClick={handleCreateWorkflow} disabled={creating}>
+            <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={creating}>
               {creating ? (
                 <Loader2 className="animate-spin rounded-full h-4 w-4" />
               ) : (
@@ -403,144 +452,194 @@ export default function WorkflowsPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {workflows.map((workflow) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          {workflows.map((workflow, index) => (
             <div 
               key={workflow.id}
               className="bg-neutral-100 dark:bg-sidebar border border-border rounded-2xl overflow-hidden hover:bg-muted/50 transition-all duration-200 group"
             >
-              <div 
-                className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100"
-                style={{ backgroundColor: getWorkflowColor(workflow.status) }}
-              >
-                <div className="text-3xl text-white drop-shadow-sm">
-                  <WorkflowIcon />
-                </div>
-                <div className="absolute top-3 right-3">
-                  {getStatusIcon(workflow.status)}
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      {editingWorkflowId === workflow.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            className="text-lg font-semibold h-8"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleSaveEditName(workflow.id);
-                              } else if (e.key === 'Escape') {
-                                handleCancelEditName();
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleSaveEditName(workflow.id)}
-                              disabled={updatingWorkflows.has(workflow.id)}
-                            >
-                              {updatingWorkflows.has(workflow.id) ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
-                              ) : (
-                                <Check className="h-3 w-3 text-green-600" />
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={handleCancelEditName}
-                              disabled={updatingWorkflows.has(workflow.id)}
-                            >
-                              <X className="h-3 w-3 text-red-600" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <h3 
-                          className="text-foreground font-medium text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => handleStartEditName(workflow)}
-                        >
-                          {workflow.definition.name || workflow.name}
-                        </h3>
-                      )}
-                    </div>
-                    {getStatusBadge(workflow.status)}
+                <div 
+                  className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100"
+                  style={{ backgroundColor: getWorkflowColor(workflow.status) }}
+                >
+                  <div className="text-3xl text-white drop-shadow-sm">
+                    {executingWorkflows.has(workflow.id) ? (
+                      <Loader2 className="animate-spin rounded-full h-12 w-12" />
+                    ) : (
+                      <WorkflowIcon />
+                    )}
                   </div>
-                  <p className="text-muted-foreground text-sm line-clamp-2 min-h-[2.5rem]">
-                    {workflow.definition.description || workflow.description || 'No description provided'}
-                  </p>
-                  <div className="flex gap-2 pt-2">
-                    <Link href={`/workflows/builder/${workflow.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
+
+                  <div className="absolute top-3 right-3">
+                    {getStatusIcon(workflow.status)}
+                  </div>
+                  <div className="absolute top-3 left-3">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                      disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                      onClick={() => handleRunWorkflow(workflow.id)}
+                    >
+                      {executingWorkflows.has(workflow.id) ? (
+                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        {editingWorkflowId === workflow.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="text-lg font-semibold h-8"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveEditName(workflow.id);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditName();
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleSaveEditName(workflow.id)}
+                                disabled={updatingWorkflows.has(workflow.id)}
+                              >
+                                {updatingWorkflows.has(workflow.id) ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
+                                ) : (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={handleCancelEditName}
+                                disabled={updatingWorkflows.has(workflow.id)}
+                              >
+                                <X className="h-3 w-3 text-red-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <h3 
+                            className="text-foreground font-medium text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => handleStartEditName(workflow)}
+                          >
+                            {workflow.definition.name || workflow.name}
+                          </h3>
+                        )}
+                      </div>
+                      {getStatusBadge(workflow.status)}
+                    </div>
+                    <p className="text-muted-foreground text-sm line-clamp-2 min-h-[2.5rem]">
+                      {workflow.definition.description || workflow.description || 'No description provided'}
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleRunWorkflow(workflow.id)}
+                        disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                        className="flex-1"
+                      >
+                        {executingWorkflows.has(workflow.id) ? (
+                          <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                        ) : (
+                          <Play className="h-3 w-3" />
+                        )}
+                        {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
+                        className="flex-1"
+                      >
                         <Settings className="h-3 w-3" />
                         Configure
                       </Button>
-                    </Link>
-                    <Button
-                      variant={workflow.status === 'active' ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
-                      disabled={togglingWorkflows.has(workflow.id)}
-                      className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
-                    >
-                      {togglingWorkflows.has(workflow.id) ? (
-                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                      ) : workflow.status === 'active' ? (
-                        <PowerOff className="h-3 w-3" />
-                      ) : (
-                        <Power className="h-3 w-3" />
-                      )}
-                      {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                          disabled={deletingWorkflows.has(workflow.id)}
-                        >
-                          {deletingWorkflows.has(workflow.id) ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{workflow.definition.name || workflow.name}"? 
-                            This action cannot be undone and will permanently remove the workflow and all its data.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteWorkflow(workflow.id)}
-                            className="bg-destructive text-white hover:bg-destructive/90"
+                      <Button
+                        variant={workflow.status === 'active' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
+                        disabled={togglingWorkflows.has(workflow.id)}
+                        className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
+                      >
+                        {togglingWorkflows.has(workflow.id) ? (
+                          <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                        ) : workflow.status === 'active' ? (
+                          <PowerOff className="h-3 w-3" />
+                        ) : (
+                          <Power className="h-3 w-3" />
+                        )}
+                        {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={deletingWorkflows.has(workflow.id)}
                           >
-                            Delete Workflow
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {deletingWorkflows.has(workflow.id) ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{workflow.definition.name || workflow.name}"? 
+                              This action cannot be undone and will permanently remove the workflow and all its data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteWorkflow(workflow.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Workflow
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      {projectId && (
+        <WorkflowBuilderModal 
+          isOpen={builderModalOpen} 
+          workflowId={builderWorkflowId} 
+          mode={builderMode} 
+          projectId={projectId}
+          onClose={handleCloseBuilderModal}
+          onWorkflowSaved={() => {
+            handleCloseBuilderModal();
+            fetchWorkflows(); // Refresh workflows list
+          }}
+        />
       )}
     </div>
   );

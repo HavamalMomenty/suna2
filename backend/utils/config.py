@@ -143,10 +143,16 @@ class Configuration:
     
     # Search and other API keys
     TAVILY_API_KEY: str
-    RAPID_API_KEY: str
+    RAPID_API_KEY: Optional[str] = None
+    RESIGHTS_TOKEN: Optional[str] = None
     CLOUDFLARE_API_TOKEN: Optional[str] = None
-    FIRECRAWL_API_KEY: str
+    FIRECRAWL_API_KEY: Optional[str] = None
     FIRECRAWL_URL: Optional[str] = "https://api.firecrawl.dev"
+    
+    # LlamaParse configuration
+    LLAMA_API_KEY: Optional[str] = None
+    #USE_LLAMA_PARSE: bool = False
+    LLAMA_PREMIUM_MODE: bool = False
     
     # Stripe configuration
     STRIPE_SECRET_KEY: Optional[str] = None

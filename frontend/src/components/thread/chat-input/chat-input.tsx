@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
   clearPendingFiles: () => void;
+  addFile: (file: File) => void;
 }
 
 export interface ChatInputProps {
@@ -107,6 +108,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     useImperativeHandle(ref, () => ({
       getPendingFiles: () => pendingFiles,
       clearPendingFiles: () => setPendingFiles([]),
+      addFile: (file: File) => setPendingFiles(prev => [...prev, file]),
     }));
 
     useEffect(() => {

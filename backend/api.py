@@ -142,6 +142,7 @@ app.include_router(agent_api.router, prefix="/api")
 
 app.include_router(sandbox_api.router, prefix="/api")
 
+# Include document parsing API router
 app.include_router(billing_api.router, prefix="/api")
 
 app.include_router(feature_flags_api.router, prefix="/api")
@@ -196,7 +197,7 @@ async def discover_custom_mcp_tools(request: CustomMCPDiscoverRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     
@@ -210,3 +211,4 @@ if __name__ == "__main__":
         workers=workers,
         loop="asyncio"
     )
+

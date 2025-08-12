@@ -100,7 +100,7 @@ class WorkflowExecutor:
                 reasoning_effort="low",
                 enable_context_manager=True,
                 agent_config=agent_config,
-                max_iterations=5
+                max_iterations=100
             ):
                 yield self._transform_agent_response_to_workflow_update(response, execution.id)
 

@@ -130,7 +130,7 @@ class DeterministicWorkflowExecutor:
                 reasoning_effort="low",
                 enable_context_manager=True,
                 agent_config=agent_config,
-                max_iterations=10  # Allow more iterations for complex workflows
+                max_iterations=100  # Allow more iterations for complex workflows
             ):
                 yield self._transform_agent_response_to_workflow_update(response, execution.id)
 
