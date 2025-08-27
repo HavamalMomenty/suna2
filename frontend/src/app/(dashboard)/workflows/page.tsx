@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -24,7 +24,6 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useFeatureFlag } from "@/lib/feature-flags";
-import { DocumentUploadDialog, type UploadedDocument } from "@/components/workflows/DocumentUploadDialog";
 
 export default function WorkflowsPage() {
   const { enabled: workflowsEnabled, loading: flagLoading } = useFeatureFlag("workflows");
@@ -46,11 +45,6 @@ export default function WorkflowsPage() {
   const [updatingWorkflows, setUpdatingWorkflows] = useState<Set<string>>(new Set());
   const [deletingWorkflows, setDeletingWorkflows] = useState<Set<string>>(new Set());
   const [togglingWorkflows, setTogglingWorkflows] = useState<Set<string>>(new Set());
-  
-  // Document upload dialog state
-  const [documentUploadDialogOpen, setDocumentUploadDialogOpen] = useState(false);
-  const [selectedWorkflowForDocuments, setSelectedWorkflowForDocuments] = useState<Workflow | null>(null);
-  const [workflowDocuments, setWorkflowDocuments] = useState<Record<string, UploadedDocument[]>>({});
 
   const { state, setOpen, setOpenMobile } = useSidebar();
   const updateWorkflowStatusMutation = useUpdateWorkflowStatus();
@@ -82,35 +76,13 @@ export default function WorkflowsPage() {
   }, []);
 
   const handleRunWorkflow = async (workflowId: string) => {
-    // Find the workflow to get its name
-    const workflow = workflows.find(w => w.id === workflowId);
-    if (!workflow) {
-      toast.error("Workflow not found");
-      return;
-    }
-    
-    // Open the document upload dialog
-    setSelectedWorkflowForDocuments(workflow);
-    setDocumentUploadDialogOpen(true);
-  };
-
-  const handleExecuteWorkflowWithDocuments = async (workflowId: string, documents: UploadedDocument[]) => {
     if (!projectId) {
       toast.error("No project selected");
       return;
     }
-    
     try {
       setExecutingWorkflows(prev => new Set(prev).add(workflowId));
-      
-      // Store the documents for this workflow
-      setWorkflowDocuments(prev => ({
-        ...prev,
-        [workflowId]: documents
-      }));
-      
-      // Execute the workflow with documents
-      const result = await executeWorkflow(workflowId, undefined, documents);
+      const result = await executeWorkflow(workflowId);
       toast.success("Workflow execution started! Redirecting to chat...");
       console.log('Workflow execution started:', result);
       if (result.thread_id) {
@@ -126,15 +98,6 @@ export default function WorkflowsPage() {
         return newSet;
       });
     }
-  };
-
-  const handleDocumentsUploaded = (workflowId: string, documents: UploadedDocument[]) => {
-    console.log(`Documents uploaded for workflow ${workflowId}:`, documents);
-    // Store the uploaded documents for this workflow
-    setWorkflowDocuments(prev => ({
-      ...prev,
-      [workflowId]: documents
-    }));
   };
 
   const handleCreateWorkflow = async () => {
@@ -456,15 +419,6 @@ export default function WorkflowsPage() {
                 <div className="absolute top-3 right-3">
                   {getStatusIcon(workflow.status)}
                 </div>
-                {/* Document count badge */}
-                {workflowDocuments[workflow.id] && workflowDocuments[workflow.id].length > 0 && (
-                  <div className="absolute top-3 left-3">
-                    <div className="bg-white/90 dark:bg-black/90 text-blue-600 dark:text-blue-400 text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
-                      <FileText className="h-3 w-3" />
-                      {workflowDocuments[workflow.id].length}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="p-4">
                 <div className="space-y-3">
@@ -519,45 +473,14 @@ export default function WorkflowsPage() {
                         </h3>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {workflowDocuments[workflow.id] && workflowDocuments[workflow.id].length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          <FileText className="h-3 w-3 mr-1" />
-                          {workflowDocuments[workflow.id].length}
-                        </Badge>
-                      )}
-                      {getStatusBadge(workflow.status)}
-                    </div>
+                    {getStatusBadge(workflow.status)}
                   </div>
                   <p className="text-muted-foreground text-sm line-clamp-2 min-h-[2.5rem]">
                     {workflow.definition.description || workflow.description || 'No description provided'}
                   </p>
-                  
-                  {/* Document indicator */}
-                  {workflowDocuments[workflow.id] && workflowDocuments[workflow.id].length > 0 && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      <span>{workflowDocuments[workflow.id].length} document{workflowDocuments[workflow.id].length !== 1 ? 's' : ''} available</span>
-                    </div>
-                  )}
-                  
                   <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleRunWorkflow(workflow.id)}
-                      disabled={executingWorkflows.has(workflow.id)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
-                    >
-                      {executingWorkflows.has(workflow.id) ? (
-                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                      ) : (
-                        <FileText className="h-3 w-3" />
-                      )}
-                      {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
-                    </Button>
-                    <Link href={`/workflows/builder/${workflow.id}`}>
-                      <Button variant="outline" size="sm">
+                    <Link href={`/workflows/builder/${workflow.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full">
                         <Settings className="h-3 w-3" />
                         Configure
                       </Button>
@@ -618,21 +541,6 @@ export default function WorkflowsPage() {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Document Upload Dialog */}
-      {selectedWorkflowForDocuments && (
-        <DocumentUploadDialog
-          isOpen={documentUploadDialogOpen}
-          onClose={() => {
-            setDocumentUploadDialogOpen(false);
-            setSelectedWorkflowForDocuments(null);
-          }}
-          workflowId={selectedWorkflowForDocuments.id}
-          workflowName={selectedWorkflowForDocuments.definition.name || selectedWorkflowForDocuments.name}
-          onDocumentsUploaded={(documents) => handleDocumentsUploaded(selectedWorkflowForDocuments.id, documents)}
-          onExecute={(documents) => handleExecuteWorkflowWithDocuments(selectedWorkflowForDocuments.id, documents)}
-        />
       )}
     </div>
   );

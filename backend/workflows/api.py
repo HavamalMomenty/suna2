@@ -50,8 +50,7 @@ async def _create_workflow_thread_for_api(
     thread_id: str, 
     project_id: str, 
     workflow: WorkflowDefinition, 
-    variables: Optional[Dict[str, Any]] = None,
-    documents: Optional[List[Any]] = None
+    variables: Optional[Dict[str, Any]] = None
 ):
     """Create a thread in the database for workflow execution (API version)."""
     try:
@@ -91,17 +90,6 @@ async def _create_workflow_thread_for_api(
         
         if variables:
             initial_message += f"\n\nVariables: {json.dumps(variables, indent=2)}"
-        
-        # Add document information if documents are provided
-        if documents and len(documents) > 0:
-            initial_message += f"\n\nUploaded Documents ({len(documents)}):"
-            for doc in documents:
-                doc_info = f"\n- {doc.name}"
-                if doc.description:
-                    doc_info += f": {doc.description}"
-                doc_info += f" ({doc.type}, {(doc.size / 1024 / 1024):.2f} MB)"
-                initial_message += doc_info
-            initial_message += "\n\nThese documents are available for the workflow to use during execution."
         
         message_data = {
             "message_id": str(uuid.uuid4()),
@@ -440,8 +428,7 @@ async def execute_workflow(
         
         thread_id = str(uuid.uuid4())
         
-        # Create the workflow thread with documents if provided
-        await _create_workflow_thread_for_api(thread_id, workflow.project_id, workflow, request.variables, request.documents)
+        await _create_workflow_thread_for_api(thread_id, workflow.project_id, workflow, request.variables)
         
         agent_run = await client.table('agent_runs').insert({
             "thread_id": thread_id, 
