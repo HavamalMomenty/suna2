@@ -2307,7 +2307,15 @@ export const deleteWorkflow = async (workflowId: string): Promise<void> => {
 
 export const executeWorkflow = async (
   workflowId: string,
-  variables?: Record<string, any>
+  variables?: Record<string, any>,
+  documents?: Array<{
+    id: string;
+    name: string;
+    size: number;
+    type: string;
+    path: string;
+    description?: string;
+  }>
 ): Promise<{ execution_id: string; thread_id: string; agent_run_id: string }> => {
   try {
     const supabase = createClient();
@@ -2325,7 +2333,10 @@ export const executeWorkflow = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ variables: variables || {} }),
+      body: JSON.stringify({ 
+        variables: variables || {},
+        documents: documents || []
+      }),
     });
 
     if (!response.ok) {

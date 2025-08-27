@@ -131,8 +131,18 @@ class WorkflowUpdateRequest(BaseModel):
     max_execution_time: Optional[int] = None
     max_retries: Optional[int] = None
 
+class WorkflowDocument(BaseModel):
+    """Document uploaded for workflow execution."""
+    id: str
+    name: str
+    size: int
+    type: str
+    path: str
+    description: Optional[str] = None
+
 class WorkflowExecuteRequest(BaseModel):
     variables: Optional[Dict[str, Any]] = None
+    documents: Optional[List[WorkflowDocument]] = None
 
 class WorkflowConvertRequest(BaseModel):
     nodes: List[WorkflowNode]
