@@ -6,21 +6,15 @@ WORKDIR /app
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --quiet
 
-# Install critical dependencies directly
-RUN pip install structlog==25.4.0 python-dotenv==1.0.1
+# Install all dependencies from pyproject.toml
+RUN uv sync --locked --quiet
 
-# Install much older stable versions without broken dependencies
-RUN pip install --no-cache-dir llama-parse==0.4.9 llama-index-core==0.10.57
-# Install matching versions
-#RUN pip install --no-cache-dir \
-#      llama-cloud-services==0.6.46 \
-#      llama-index-core==0.12.49
+# Verify critical dependencies are installed
+RUN uv pip list | grep -E "(fastapi|uvicorn|gunicorn)"
 
 # Copy application code
 COPY . .
-
 
 # ensure the venv has pip (create if empty), then install
 RUN if [ ! -x /app/.venv/bin/pip ]; then \
@@ -45,26 +39,26 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
-# Gunicorn configuration
-CMD ["sh", "-c", "uv run gunicorn api:app \
-  --workers $WORKERS \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
-  --timeout 1800 \
-  --graceful-timeout 600 \
-  --keep-alive 1800 \
-  --max-requests 0 \
-  --max-requests-jitter 0 \
-  --forwarded-allow-ips '*' \
-  --worker-connections $WORKER_CONNECTIONS \
-  --worker-tmp-dir /dev/shm \
-  --preload \
-  --log-level info \
-  --access-logfile - \
-  --error-logfile - \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --threads $THREADS"]
+# Gunicorn configuration - use virtual environment Python directly
+CMD ["/app/.venv/bin/gunicorn", "api:app", \
+  "--workers", "33", \
+  "--worker-class", "uvicorn.workers.UvicornWorker", \
+  "--bind", "0.0.0.0:8000", \
+  "--timeout", "1800", \
+  "--graceful-timeout", "600", \
+  "--keep-alive", "1800", \
+  "--max-requests", "0", \
+  "--max-requests-jitter", "0", \
+  "--forwarded-allow-ips", "*", \
+  "--worker-connections", "2000", \
+  "--worker-tmp-dir", "/dev/shm", \
+  "--preload", \
+  "--log-level", "info", \
+  "--access-logfile", "-", \
+  "--error-logfile", "-", \
+  "--capture-output", \
+  "--enable-stdio-inheritance", \
+  "--threads", "2"]
 
 #RUN pip install debugpy
 

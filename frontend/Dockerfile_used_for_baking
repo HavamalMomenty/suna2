@@ -24,11 +24,16 @@ RUN npm install
 # Copy the frontend code
 COPY . .
 
-COPY .env.local .env.local
+COPY .env.local .env.local  
+# this gets copied anyway by copy ..
 
-
-ENV NEXT_PUBLIC_VERCEL_ENV production
-
+ENV NODE_ENV=production \
+    NEXT_PUBLIC_VERCEL_ENV=production \
+    NEXT_PUBLIC_SUPABASE_URL=https://fdfwxbpspfejwdvhhqvk.supabase.co \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkZnd4YnBzcGZlandkdmhocXZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1MjgyMzAsImV4cCI6MjA2OTEwNDIzMH0.JO4f-oqTFA1Q-m56vtVJ5D23d0fg20LNvfnDTTbE4GM \
+    NEXT_PUBLIC_BACKEND_URL=https://momenty.dk/api \
+    NEXT_PUBLIC_URL=https://momenty.dk \
+    NEXT_PUBLIC_ENV_MODE=PRODUCTION
 RUN npm run build
 
 EXPOSE 3000
