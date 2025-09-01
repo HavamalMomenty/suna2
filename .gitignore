@@ -210,4 +210,9 @@ parse_pdf.py
 .env.local.backup
 .env.local.production.backup
 
+docs/ACA-AZURE-DEPLOY.md
+docs/AZ-docker-swarm.md
+docs/AZURE-DEPLOYMENT.md
+docs/AZURE-DEPLOYMENT.md
+docs/impl details single external port docker compose production.md
 frontend/public/Instruction_documents

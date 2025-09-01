@@ -26,6 +26,13 @@ export interface WorkflowFile {
   created_by: string;
 }
 
+export interface WorkflowCredential {
+  workflow_id: string;
+  credential_key: string;
+  credential_value: string;
+  description: string;
+}
+
 export interface WorkflowBuilderData {
   title: string;
   description?: string;

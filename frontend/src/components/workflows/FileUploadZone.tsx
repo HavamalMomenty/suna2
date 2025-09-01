@@ -116,8 +116,18 @@ export function FileUploadZone({
           file
         });
 
-        // Add the uploaded file to the files list (extract file from response)
-        onFilesChange([...files, response.file]);
+        // Add the uploaded file to the files list (construct WorkflowFile from response)
+        const newFile: WorkflowFile = {
+          id: response.file_id,
+          workflow_id: workflowId || '',
+          filename: response.filename,
+          file_type: response.mime_type,
+          file_size: response.file_size,
+          file_path: '', // This will be set by the backend
+          mime_type: response.mime_type,
+          created_by: '' // This will be set by the backend
+        };
+        onFilesChange([...files, newFile]);
         
         setUploadProgress(prev => {
           const newProgress = { ...prev };
