@@ -214,7 +214,7 @@ export function Navbar() {
                       height={24}
                     />
                     <span className="font-medium text-primary text-sm">
-                      / Suna
+                      / Node
                     </span>
                   </Link>
                   <button

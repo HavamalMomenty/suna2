@@ -1,11 +1,11 @@
 export const siteConfig = {
   name: 'Momenty',
-  url: 'https://suna.so/',
+  url: 'https://momenty.dk/',
   description: 'Node AI',
   links: {
-    twitter: 'https://x.com/kortixai',
-    github: 'https://github.com/kortix-ai/',
-    linkedin: 'https://www.linkedin.com/company/kortix/',
+    twitter: 'https://x.com/momenty',
+    github: 'https://github.com/momenty/',
+    linkedin: 'https://www.linkedin.com/company/momenty/',
   },
 };
 
