@@ -38,13 +38,42 @@ class WorkflowBuilderService:
         
         # Allowed file types for workflow files
         self.allowed_mime_types = {
+            # Text files
             'text/markdown',
+            'text/plain',
+            'text/csv',
+            'text/html',
+            'text/css',
+            'text/xml',
+            'application/xml',
+            'application/octet-stream',  # Generic binary/unknown types
+            # Common mislabels
+            'application/vnd.ms-excel',  # some browsers send CSV/XLS as this
+            'application/msexcel',       # Alternative Excel MIME
+            'application/excel',         # Another Excel variant
+            # Documents
             'application/pdf',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain',
-            'application/json'
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword',
+            'application/mspowerpoint',  # Legacy PowerPoint
+            'application/powerpoint',    # Alternative PowerPoint
+            'application/vnd.ms-powerpoint',  # Legacy PowerPoint
+            'application/vnd.ms-powerpoint.presentation',  # Another PowerPoint variant
+            'application/x-mspowerpoint',  # Another PowerPoint variant
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.oasis.opendocument.presentation',
+            'application/rtf',
+            'application/x-tex',
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'text/tab-separated-values',
+            # Data
+            'application/json',
+            # Images
+            'image/jpeg',
+            'image/png',
+            'image/svg+xml'
         }
         
         # File size limit (50MB)
@@ -275,11 +304,42 @@ class WorkflowBuilderService:
                 raise Exception(f"Storage upload failed: {str(storage_error)}")
             
             # Create database record
+            # Extract a reasonable file type from MIME type or filename
+            file_type = "unknown"
+            if file.content_type:
+                if file.content_type.startswith('application/vnd.openxmlformats-officedocument'):
+                    # Handle Office documents with shorter type names
+                    if 'presentationml' in file.content_type:
+                        file_type = "pptx"
+                    elif 'wordprocessingml' in file.content_type:
+                        file_type = "docx"
+                    elif 'spreadsheetml' in file.content_type:
+                        file_type = "xlsx"
+                    else:
+                        file_type = "office"
+                elif file.content_type.startswith('application/vnd.oasis.opendocument'):
+                    # Handle OpenDocument files
+                    if 'presentation' in file.content_type:
+                        file_type = "odp"
+                    elif 'text' in file.content_type:
+                        file_type = "odt"
+                    elif 'spreadsheet' in file.content_type:
+                        file_type = "ods"
+                    else:
+                        file_type = "odf"
+                else:
+                    # For other types, use the second part of MIME type
+                    file_type = file.content_type.split('/')[1]
+            elif file.filename:
+                # Fallback to file extension
+                ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "unknown"
+                file_type = ext
+            
             file_record = {
                 "id": file_id,
                 "workflow_id": workflow_id,
                 "filename": file.filename,
-                "file_type": file.content_type.split('/')[1] if file.content_type else "unknown",
+                "file_type": file_type,
                 "file_size": len(file_content),
                 "file_path": storage_path,
                 "mime_type": file.content_type,
@@ -334,11 +394,22 @@ class WorkflowBuilderService:
             # Verify workflow access
             await self._verify_workflow_access(file_data["workflow_id"], user_id)
             
-            # Delete from storage
+            # Delete from storage (Supabase Python SDK may return a list or an object)
             storage_result = self.supabase.storage.from_(self.bucket_name).remove([file_data["file_path"]])
             
-            if storage_result.error:
-                logger.warning(f"Failed to delete file from storage: {storage_result.error}")
+            # Handle different return shapes gracefully
+            try:
+                possible_error = getattr(storage_result, 'error', None)
+            except Exception:
+                possible_error = None
+            
+            if isinstance(storage_result, list):
+                for item in storage_result:
+                    if isinstance(item, dict) and item.get('error'):
+                        logger.warning(f"Failed to delete file from storage: {item.get('error')}")
+                        break
+            elif possible_error:
+                logger.warning(f"Failed to delete file from storage: {possible_error}")
             
             # Delete database record
             self.supabase.table("workflow_files").delete().eq("id", file_id).execute()
@@ -443,11 +514,56 @@ class WorkflowBuilderService:
     
     async def _validate_file(self, file: UploadFile) -> None:
         """Validate uploaded file."""
-        if not file.content_type or file.content_type not in self.allowed_mime_types:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File type not allowed. Allowed types: {', '.join(self.allowed_mime_types)}"
-            )
+        # Normalize content type
+        content_type = (file.content_type or "").strip()
+        
+        # Log for debugging
+        logger.info(f"Validating file: {file.filename}, content_type: '{content_type}', size: {file.size}")
+
+        # Check MIME type first
+        if content_type and content_type in self.allowed_mime_types:
+            # MIME type is valid, proceed
+            pass
+        else:
+            # Fallback: check file extension for common mislabeled files
+            if file.filename:
+                file_extension = self._get_file_extension(file.filename).lower().strip()
+                allowed_extensions = {
+                    '.md', '.markdown',  # Markdown
+                    '.mdx',             # MDX markdown
+                    '.txt',              # Plain text
+                    '.csv',              # CSV
+                    '.html', '.htm',     # HTML
+                    '.css',              # CSS
+                    '.xml',              # XML
+                    '.pdf',              # PDF
+                    '.doc', '.docx',     # Word
+                    '.ppt', '.pptx',     # PowerPoint
+                    '.xls', '.xlsx',     # Excel
+                    '.odt',              # OpenDocument Text
+                    '.rtf',              # Rich Text
+                    '.tex',              # LaTeX
+                    '.ods',              # OpenDocument Spreadsheet
+                    '.tsv',              # Tab-separated values
+                    '.json',             # JSON
+                    '.jpg', '.jpeg',     # JPEG
+                    '.png',              # PNG
+                    '.svg'               # SVG
+                }
+                
+                if file_extension in allowed_extensions:
+                    # File extension is valid, proceed
+                    pass
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File type not allowed. Allowed types: {', '.join(self.allowed_mime_types)}"
+                    )
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File type not allowed. Allowed types: {', '.join(self.allowed_mime_types)}"
+                )
         
         if file.size and file.size > self.max_file_size:
             raise HTTPException(

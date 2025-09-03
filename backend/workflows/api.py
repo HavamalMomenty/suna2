@@ -1273,13 +1273,42 @@ async def upload_workflow_file(
     try:
         # Validate file type and size
         allowed_types = {
-            'text/markdown', 
+            # Text files
+            'text/markdown',
+            'text/plain',
+            'text/csv',
+            'text/html',
+            'text/css',
+            'text/xml',
+            'application/xml',
+            'application/octet-stream',
+            # Common mislabels
+            'application/vnd.ms-excel',  # some browsers send CSV/XLS as this
+            'application/msexcel',       # Alternative Excel MIME
+            'application/excel',         # Another Excel variant
+            # Documents
             'application/pdf',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'text/plain',
-            'application/json'
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword',
+            'application/mspowerpoint',  # Legacy PowerPoint
+            'application/powerpoint',    # Alternative PowerPoint
+            'application/vnd.ms-powerpoint',  # Legacy PowerPoint
+            'application/vnd.ms-powerpoint.presentation',  # Another PowerPoint variant
+            'application/x-mspowerpoint',  # Another PowerPoint variant
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.oasis.opendocument.presentation',
+            'application/rtf',
+            'application/x-tex',
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'text/tab-separated-values',
+            # Data
+            'application/json',
+            # Images
+            'image/jpeg',
+            'image/png',
+            'image/svg+xml'
         }
         
         if file.content_type not in allowed_types:
@@ -1392,19 +1421,80 @@ async def get_workflow_file_content(
     """Get the content of a specific workflow file."""
     
     try:
+        logger.info(f"Download request: workflow_id={workflow_id}, file_id={file_id}, user_id={user_id}")
+        
         # Verify access first
         await service._verify_workflow_access(workflow_id, user_id)
+        
+        # Get file record from database to get filename and mime type
+        file_result = service.supabase.table("workflow_files").select("*").eq("id", file_id).eq("workflow_id", workflow_id).execute()
+        
+        logger.info(f"Database query result: {len(file_result.data) if file_result.data else 0} records found")
+        
+        if not file_result.data:
+            logger.warning(f"File {file_id} not found in workflow {workflow_id}")
+            raise ValueError(f"File {file_id} not found in workflow {workflow_id}")
+        
+        file_record = file_result.data[0]
+        logger.info(f"File record found: {file_record.get('filename')}, mime_type: {file_record.get('mime_type')}")
         
         # Get file content from Supabase Storage
         file_content = await service.get_file_content(workflow_id, file_id, user_id)
         
-        # Return the file content as a response
+        logger.info(f"File content retrieved, size: {len(file_content) if file_content else 0} bytes")
+        
+        # Return the file content as a response with proper headers
         from fastapi.responses import Response
         return Response(
             content=file_content,
-            media_type="application/octet-stream",
+            media_type=file_record.get("mime_type") or "application/octet-stream",
             headers={
-                "Content-Disposition": f"attachment; filename=workflow_file_{file_id}"
+                "Content-Disposition": f"attachment; filename={file_record['filename']}"
+            }
+        )
+        
+    except PermissionError:
+        logger.error(f"Permission denied for workflow {workflow_id}, user {user_id}")
+        raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError as e:
+        logger.error(f"Value error: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting workflow file content: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get workflow file content")
+
+
+@router.get("/workflows/{workflow_id}/files/{file_id}/download")
+async def download_workflow_file(
+    workflow_id: str,
+    file_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
+):
+    """Download a specific workflow file."""
+    
+    try:
+        # Verify access first
+        await service._verify_workflow_access(workflow_id, user_id)
+        
+        # Get file record from database to get filename and mime type
+        file_result = service.supabase.table("workflow_files").select("*").eq("id", file_id).eq("workflow_id", workflow_id).execute()
+        
+        if not file_result.data:
+            raise ValueError(f"File {file_id} not found in workflow {workflow_id}")
+        
+        file_record = file_result.data[0]
+        
+        # Get file content
+        file_content = await service.get_file_content(workflow_id, file_id, user_id)
+        
+        # Return the file content as a response with proper headers
+        from fastapi.responses import Response
+        return Response(
+            content=file_content,
+            media_type=file_record.get("mime_type") or "application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={file_record['filename']}"
             }
         )
         
@@ -1413,8 +1503,8 @@ async def get_workflow_file_content(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error getting workflow file content: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get workflow file content")
+        logger.error(f"Error downloading workflow file: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download workflow file")
 
 
 @router.post("/workflows/builder/with-files", response_model=WorkflowDefinition)
@@ -1446,13 +1536,42 @@ async def create_workflow_from_builder_with_files(
             for file in files:
                 # Validate file type and size (same as individual upload endpoint)
                 allowed_types = {
-                    'text/markdown', 
+                    # Text files
+                    'text/markdown',
+                    'text/plain',
+                    'text/csv',
+                    'text/html',
+                    'text/css',
+                    'text/xml',
+                    'application/xml',
+                    'application/octet-stream',
+                    # Common mislabels
+                    'application/vnd.ms-excel',  # some browsers send CSV/XLS as this
+                    'application/msexcel',       # Alternative Excel MIME
+                    'application/excel',         # Another Excel variant
+                    # Documents
                     'application/pdf',
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                    'text/plain',
-                    'application/json'
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/msword',
+                    'application/mspowerpoint',  # Legacy PowerPoint
+                    'application/powerpoint',    # Alternative PowerPoint
+                    'application/vnd.ms-powerpoint',  # Legacy PowerPoint
+                    'application/vnd.ms-powerpoint.presentation',  # Another PowerPoint variant
+                    'application/x-mspowerpoint',  # Another PowerPoint variant
+                    'application/vnd.oasis.opendocument.text',
+                    'application/vnd.oasis.opendocument.presentation',
+                    'application/rtf',
+                    'application/x-tex',
+                    'application/vnd.oasis.opendocument.spreadsheet',
+                    'text/tab-separated-values',
+                    # Data
+                    'application/json',
+                    # Images
+                    'image/jpeg',
+                    'image/png',
+                    'image/svg+xml'
                 }
                 
                 if file.content_type not in allowed_types:

@@ -11,6 +11,7 @@ import {
   Upload, 
   File, 
   Trash2, 
+  Download,
   AlertCircle, 
   CheckCircle,
   Loader2,
@@ -35,15 +36,46 @@ interface FileUploadZoneProps {
   mode?: 'create' | 'edit';
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (match backend)
 const ALLOWED_TYPES = [
-  'application/pdf',
-  'text/plain',
+  // Text/Data
   'text/markdown',
+  'text/plain',
+  'text/csv',
+  'text/html',
+  'text/css',
+  'text/xml',
+  'application/xml',
+  'application/json',
+  'text/tab-separated-values',
+  'application/octet-stream',
+  // Office/Documents
+  'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'text/csv',
-  'application/json'
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/mspowerpoint',
+  'application/powerpoint',
+  'application/vnd.ms-excel',
+  'application/msexcel',
+  'application/excel',
+  'application/rtf',
+  'application/x-tex',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.presentation',
+  // Images
+  'image/jpeg',
+  'image/png',
+  'image/svg+xml'
+];
+
+const ALLOWED_EXTENSIONS = [
+  '.md', '.markdown', '.mdx', '.txt', '.csv', '.tsv', '.html', '.htm', '.css', '.xml', '.json',
+  '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.ods', '.odp', '.rtf', '.tex',
+  '.jpg', '.jpeg', '.png', '.svg'
 ];
 
 const getFileIcon = (mimeType: string) => {
@@ -81,13 +113,15 @@ export function FileUploadZone({
     for (const file of acceptedFiles) {
       // Validate file size
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        toast.error(`File "${file.name}" is too large. Maximum size is 50MB.`);
         continue;
       }
 
       // Validate file type
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`File type "${file.type}" is not supported for "${file.name}".`);
+      const lowerName = file.name.toLowerCase();
+      const hasAllowedExtension = ALLOWED_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+      if (!ALLOWED_TYPES.includes(file.type) && !hasAllowedExtension) {
+        toast.error(`File type "${file.type || 'unknown'}" not supported for "${file.name}".`);
         continue;
       }
       
@@ -152,13 +186,34 @@ export function FileUploadZone({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
+      'text/markdown': ['.md', '.markdown', '.mdx'],
       'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
+      'text/csv': ['.csv'],
+      'text/tab-separated-values': ['.tsv'],
+      'text/html': ['.html', '.htm'],
+      'text/css': ['.css'],
+      'text/xml': ['.xml'],
+      'application/xml': ['.xml'],
+      'application/json': ['.json'],
+      'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/csv': ['.csv'],
-      'application/json': ['.json']
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/mspowerpoint': ['.ppt'],
+      'application/powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'application/vnd.ms-excel': ['.xls', '.csv'],
+      'application/msexcel': ['.xls'],
+      'application/excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.oasis.opendocument.text': ['.odt'],
+      'application/vnd.oasis.opendocument.spreadsheet': ['.ods'],
+      'application/vnd.oasis.opendocument.presentation': ['.odp'],
+      'application/rtf': ['.rtf'],
+      'application/x-tex': ['.tex'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/svg+xml': ['.svg']
     },
     maxSize: MAX_FILE_SIZE,
     disabled: false // Allow uploads in both create and edit modes
@@ -177,14 +232,55 @@ export function FileUploadZone({
     }
   };
 
+  const handleDownloadFile = async (file: WorkflowFile) => {
+    if (!workflowId) return;
+
+    try {
+      // Get Supabase session for authentication
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('No access token available');
+      }
+
+      const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/workflows/${workflowId}/files/${file.id}/content`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success(`File "${file.filename}" downloaded successfully`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download file');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Info Alert */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          Upload supplementary files to provide additional context for your workflow. 
-          Supported formats: PDF, TXT, MD, DOC, DOCX, CSV, JSON (max 10MB each).
+          Upload supplementary files to provide additional context for your workflow.
+          Supported: MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, JPG/JPEG, PNG, SVG (max 50MB each).
         </AlertDescription>
       </Alert>
 
@@ -214,7 +310,7 @@ export function FileUploadZone({
                     Drag & drop files here, or click to select
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    PDF, TXT, MD, DOC, DOCX, CSV, JSON (max 10MB each)
+                    MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, JPG/JPEG, PNG, SVG (max 50MB)
                   </p>
                 </div>
               )}
@@ -262,19 +358,31 @@ export function FileUploadZone({
                       </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteFile(file.id)}
-                    disabled={deleteMutation.isPending}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    {deleteMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownloadFile(file)}
+                      className="text-primary hover:text-primary hover:bg-primary/10"
+                      title="Download file"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteFile(file.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Delete file"
+                    >
+                      {deleteMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

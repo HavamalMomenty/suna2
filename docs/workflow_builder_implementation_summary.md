@@ -1,11 +1,54 @@
-# To do:
+### Recent Fixes: File Uploads, Downloads, and Deletions (Concise Summary)
 
-1. ✅ COMPLETED - Feature flag requirement removed
-2. Read the entire doc
-3. Maybe rename everything to do with the feature to something with custom_workflow 
-4. Checkout especially frontend wrong imports / missing dependencies
+This section documents the targeted changes made to stabilize workflow file handling and broaden supported formats.
 
+In short, it required 1. changes to suna2/frontend/src/components/workflows/FileUploadZone.tsx and suna2/backend/workflows/api.py and suna2/backend/services/workflow_builder_service.py. 
 
+1) Backend API: broaden accepted upload types
+- File: `backend/workflows/api.py`
+- Endpoints updated:
+  - `POST /workflows/{workflow_id}/files`
+  - `POST /workflows/builder/with-files`
+- Changes:
+  - Expanded in-endpoint `allowed_types` to include:
+    - Text/data: `text/markdown`, `text/plain`, `text/csv`, `text/html`, `text/css`, `text/xml`, `application/xml`, `application/json`, `text/tab-separated-values`
+    - Office/docs: `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/vnd.openxmlformats-officedocument.presentationml.presentation`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.oasis.opendocument.text`, `application/vnd.oasis.opendocument.spreadsheet`, `application/rtf`, `application/x-tex`
+    - Images: `image/jpeg`, `image/png`, `image/svg+xml`
+    - Mislabels/compat: `application/vnd.ms-excel` (common CSV/XLS mislabel), `application/octet-stream`
+  - Rationale: the API layer was rejecting files before service validation; now aligned with service.
+
+2) Backend Service: align MIME allowlist and add extension fallback
+- File: `backend/services/workflow_builder_service.py`
+- Changes:
+  - `self.allowed_mime_types`: mirrored the expanded set above for consistency.
+  - `_validate_file`:
+    - Normalizes and trims `content_type` before checks.
+    - Adds fallback validation by file extension for browser-mislabeled uploads.
+    - Supported extensions include: `.md`, `.markdown`, `.mdx`, `.txt`, `.csv`, `.tsv`, `.html`, `.htm`, `.css`, `.xml`, `.json`, `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`, `.odt`, `.ods`, `.rtf`, `.tex`, `.jpg`, `.jpeg`, `.png`, `.svg`.
+  - Impact: uploads now succeed even when the browser sends generic or incorrect MIME types.
+
+3) Download endpoint added
+- File: `backend/workflows/api.py`
+- Endpoint: `GET /workflows/{workflow_id}/files/{file_id}/download`
+- Behavior:
+  - Verifies access with the service.
+  - Reads file record (for filename and MIME) and binary content from storage.
+  - Returns with `Content-Disposition: attachment` and correct `Content-Type`.
+
+4) Delete robustness retained
+- File: `backend/services/workflow_builder_service.py`
+- `delete_file` handles both list and object shapes from Supabase Storage `remove()`, preventing `'list' object has no attribute 'error'` exceptions.
+
+5) Size limits and parity
+- Both API and service enforce a 50MB maximum size to match frontend copy and prevent large payload issues.
+
+Outcome
+- Uploads: All listed formats now accepted; mislabeled files (e.g., Markdown as `text/plain` or blobs as `application/octet-stream`) are handled.
+- Downloads: Per-file download works with correct filename and MIME.
+- Deletions: No 500 errors from storage response shape differences.
+
+Notes for frontend
+- The dialog accessibility warnings are unrelated to file I/O; ensure `DialogTitle` is present or wrapped in `VisuallyHidden` per Radix guidance.
 
 
 # Workflow Builder Feature - Complete Implementation Summary

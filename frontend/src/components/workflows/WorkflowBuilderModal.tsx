@@ -283,10 +283,10 @@ export function WorkflowBuilderModal({
               <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
             </div>
             <AlertDialogDescription className="space-y-4">
-              <p>
+              <div>
                 This action cannot be undone. This will permanently delete the workflow 
                 <strong> "{formData.title}"</strong> and all associated files.
-              </p>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="delete-confirmation" className="text-sm font-medium">
                   Please type <strong>"{formData.title}"</strong> to confirm.
@@ -299,9 +299,9 @@ export function WorkflowBuilderModal({
                   className={deleteConfirmation && !canDelete ? 'border-red-500 focus:border-red-500' : ''}
                 />
                 {deleteConfirmation && !canDelete && (
-                  <p className="text-sm text-red-500">
+                  <div className="text-sm text-red-500">
                     The name doesn't match. Please type the exact workflow name.
-                  </p>
+                  </div>
                 )}
               </div>
             </AlertDialogDescription>
