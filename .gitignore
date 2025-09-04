@@ -216,3 +216,5 @@ docs/AZURE-DEPLOYMENT.md
 docs/AZURE-DEPLOYMENT.md
 docs/impl details single external port docker compose production.md
 frontend/public/Instruction_documents
+backend/admin_users_list.json
+docs/BILLING_REMOVAL_PLAN.md

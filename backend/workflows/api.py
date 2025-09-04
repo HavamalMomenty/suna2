@@ -22,6 +22,7 @@ from .scheduler import WorkflowScheduler
 from services.supabase import DBConnection
 from utils.logger import logger
 from utils.auth_utils import get_current_user_id_from_jwt
+from config.admin_users import is_admin_user
 from scheduling.qstash_service import QStashService
 from scheduling.models import (
     ScheduleCreateRequest, ScheduleConfig as QStashScheduleConfig,
@@ -33,6 +34,24 @@ from webhooks.providers import TelegramWebhookProvider
 router = APIRouter()
 
 db = DBConnection()
+
+@router.get("/admin-users")
+async def get_admin_users():
+    """Get the list of admin user IDs."""
+    try:
+        import os
+        import json
+        
+        # Load from admin_users_list.json in backend root
+        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        json_file = os.path.join(current_dir, 'admin_users_list.json')
+        
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+            return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Fallback if file doesn't exist
+        return {"admin_user_ids": ["00af93e6-1dd3-4fc2-baf0-558b24634a5d"]}
 workflow_converter = WorkflowConverter()
 workflow_executor = WorkflowExecutor(db)
 workflow_scheduler = WorkflowScheduler(db, workflow_executor)
@@ -45,6 +64,12 @@ def initialize(database: DBConnection):
     workflow_executor = WorkflowExecutor(db)
     workflow_scheduler = WorkflowScheduler(db, workflow_executor)
     qstash_service = QStashService()
+
+async def verify_admin_user(user_id: str = Depends(get_current_user_id_from_jwt)) -> str:
+    """Verify that the current user has admin privileges."""
+    if not is_admin_user(user_id):
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return user_id
 
 async def _create_workflow_thread_for_api(
     thread_id: str, 
@@ -164,10 +189,11 @@ async def list_workflows(
     user_id: str = Depends(get_current_user_id_from_jwt),
     x_project_id: Optional[str] = Header(None)
 ):
-    """List all workflows for the current user."""
+    """List all workflows for the current user, including default workflows."""
     try:
         client = await db.client
         
+        # Get user's own workflows
         query = client.table('workflows').select('*').eq('account_id', user_id)
         
         if x_project_id:
@@ -176,14 +202,173 @@ async def list_workflows(
         result = await query.execute()
         
         workflows = []
+        workflow_ids = set()  # Track IDs to avoid duplicates
+        
+        # Add user's own workflows
         for data in result.data:
             workflow = _map_db_to_workflow_definition(data)
             workflows.append(workflow)
+            workflow_ids.add(data['id'])
+        
+        # Add default workflows (identified by name ending with "(Default)")
+        # but exclude any that are already in the user's workflows
+        default_result = await client.table('workflows').select('*').like('name', '% (Default)').execute()
+        
+        for data in default_result.data:
+            if data['id'] not in workflow_ids:  # Avoid duplicates
+                workflow = _map_db_to_workflow_definition(data)
+                workflows.append(workflow)
+                workflow_ids.add(data['id'])
         
         return workflows
         
     except Exception as e:
         logger.error(f"Error listing workflows: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/workflows/{workflow_id}/toggle-default", response_model=WorkflowDefinition)
+async def toggle_workflow_default_status(
+    workflow_id: str,
+    admin_user_id: str = Depends(verify_admin_user)
+):
+    """Toggle a workflow's default status (admin only)."""
+    try:
+        client = await db.client
+        
+        # Get the current workflow
+        result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        current_workflow = result.data[0]
+        current_name = current_workflow['name']
+        is_currently_default = current_name.endswith(" (Default)")
+        
+        # Toggle the default status
+        if is_currently_default:
+            # De-promote: remove "(Default)" suffix
+            new_name = current_name.replace(" (Default)", "")
+            action = "de-promoted from default"
+        else:
+            # Promote: add "(Default)" suffix
+            new_name = f"{current_name} (Default)"
+            action = "promoted to default"
+        
+        # Update the workflow
+        update_result = await client.table('workflows').update({
+            "name": new_name
+        }).eq('id', workflow_id).execute()
+        
+        if not update_result.data:
+            raise HTTPException(status_code=500, detail=f"Failed to {action.replace('ed', '')} workflow")
+        
+        logger.info(f"Workflow {workflow_id} {action} by admin {admin_user_id}")
+        return _map_db_to_workflow_definition(update_result.data[0])
+        
+    except Exception as e:
+        logger.error(f"Error toggling workflow default status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/workflows/default", response_model=WorkflowDefinition)
+async def create_default_workflow(
+    workflow_data: dict,
+    admin_user_id: str = Depends(verify_admin_user),
+    x_project_id: str = Header(...)
+):
+    """Create a new default workflow (admin only)."""
+    try:
+        client = await db.client
+        
+        # Get admin user's account ID
+        account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', admin_user_id).execute()
+        account_id = account_result.data[0]['account_id'] if account_result.data else admin_user_id
+        
+        # Ensure the name ends with "(Default)" to identify it as a default workflow
+        base_name = workflow_data.get('name', 'Untitled Default Workflow')
+        if not base_name.endswith(" (Default)"):
+            base_name = f"{base_name} (Default)"
+        
+        # Create the default workflow
+        default_workflow_data = {
+            "name": base_name,
+            "description": workflow_data.get('description'),
+            "project_id": x_project_id,  # Use admin's project
+            "account_id": account_id,  # Use admin's account
+            "created_by": admin_user_id,  # Use admin user ID to avoid foreign key issues
+            "master_prompt": workflow_data.get('master_prompt'),
+            "login_template": workflow_data.get('login_template'),
+            "definition": workflow_data.get('definition', {
+                "type": "builder_workflow",
+                "version": "1.0",
+                "created_via": "admin_default",
+                "steps": [],
+                "entry_point": "",
+                "triggers": [{"type": "MANUAL", "config": {}}]
+            }),
+            "status": "active"
+        }
+        
+        result = await client.table('workflows').insert(default_workflow_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create default workflow")
+        
+        logger.info(f"Default workflow created by admin {admin_user_id}: {workflow_data.get('name')}")
+        return _map_db_to_workflow_definition(result.data[0])
+        
+    except Exception as e:
+        logger.error(f"Error creating default workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/workflows/{workflow_id}/copy", response_model=WorkflowDefinition)
+async def copy_workflow(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    x_project_id: str = Header(...),
+    new_name: Optional[str] = None
+):
+    """Copy an existing workflow to the user's project."""
+    try:
+        client = await db.client
+        
+        # Get the source workflow
+        source_result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
+        
+        if not source_result.data:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        source_workflow = source_result.data[0]
+        
+        # Get user's account ID
+        account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+        account_id = account_result.data[0]['account_id'] if account_result.data else user_id
+        
+        # Create the copied workflow
+        new_workflow_data = {
+            "name": new_name or f"{source_workflow['name']} (Copy)",
+            "description": source_workflow.get('description'),
+            "project_id": x_project_id,
+            "account_id": account_id,
+            "created_by": user_id,
+            "master_prompt": source_workflow.get('master_prompt'),
+            "login_template": source_workflow.get('login_template'),
+            "definition": source_workflow.get('definition', {}),
+            "status": "draft"
+        }
+        
+        result = await client.table('workflows').insert(new_workflow_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to copy workflow")
+        
+        return _map_db_to_workflow_definition(result.data[0])
+        
+    except Exception as e:
+        logger.error(f"Error copying workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/workflows", response_model=WorkflowDefinition)
@@ -261,9 +446,17 @@ async def update_workflow(
     """Update a workflow."""
     try:
         client = await db.client
-        existing = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
+        # Allow editing workflows created by the user OR default workflows (identified by name ending with "(Default)")
+        existing = await client.table('workflows').select('*').eq('id', workflow_id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        workflow = existing.data[0]
+        is_default_workflow = workflow['name'].endswith(' (Default)')
+        is_owner = workflow['created_by'] == user_id
+        
+        if not is_owner and not is_default_workflow:
+            raise HTTPException(status_code=403, detail="Access denied")
         
         current_definition = existing.data[0].get('definition', {})
         
@@ -675,9 +868,17 @@ async def update_workflow_flow(
     """Update the visual flow of a workflow and convert it to executable definition."""
     try:
         client = await db.client
-        existing = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
+        # Allow editing workflows created by the user OR default workflows (identified by name ending with "(Default)")
+        existing = await client.table('workflows').select('*').eq('id', workflow_id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        workflow = existing.data[0]
+        is_default_workflow = workflow['name'].endswith(' (Default)')
+        is_owner = workflow['created_by'] == user_id
+        
+        if not is_owner and not is_default_workflow:
+            raise HTTPException(status_code=403, detail="Access denied")
         
         flow_data = {
             'workflow_id': workflow_id,

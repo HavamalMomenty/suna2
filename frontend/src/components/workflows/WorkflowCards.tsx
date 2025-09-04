@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, RefreshCw, Workflow } from 'lucide-react';
+import { Plus, Settings, RefreshCw, Workflow as WorkflowIcon, Star } from 'lucide-react';
 import { WorkflowBuilderModal } from './WorkflowBuilderModal';
 import { useQuery } from '@tanstack/react-query';
-import { getWorkflows } from '@/lib/api';
+import { getWorkflows, type Workflow } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface WorkflowCardsProps {
-  onSelectWorkflow?: (workflow: any) => void;
+  onSelectWorkflow?: (workflow: Workflow) => void;
   projectId: string;
 }
 
@@ -26,11 +27,15 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
     enabled: !!projectId,
   });
 
+
+
   const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
     setBuilderModalOpen(true);
     setBuilderWorkflowId(workflowId);
     setBuilderMode(mode);
   };
+
+
 
   const handleCloseBuilderModal = () => {
     setBuilderModalOpen(false);
@@ -48,6 +53,10 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
       onSelectWorkflow(workflow);
     }
   };
+
+
+
+
 
   if (isLoading) {
     return (
@@ -120,33 +129,55 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
                 ease: "easeOut"
               }}
             >
-              <Card className="group cursor-pointer h-full shadow-none transition-all bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 p-0 justify-center relative">
+                                   <Card className={`group cursor-pointer h-full shadow-none transition-all p-0 justify-center relative ${
+                       workflow.name.endsWith(' (Default)')
+                         ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800'
+                         : 'bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60'
+                     }`}>
                 <CardHeader 
                   className="p-2 grid-rows-1"
                   onClick={() => handleWorkflowClick(workflow)}
                 >
                   <div className="flex items-start justify-center gap-1.5">
                     <div className="flex-shrink-0 mt-0.5">
-                      <Workflow size={14} className="text-blue-600 dark:text-blue-400" />
+                      {workflow.name.endsWith(' (Default)') ? (
+                        <Star size={14} className="text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <WorkflowIcon size={14} className="text-blue-600 dark:text-blue-400" />
+                      )}
                     </div>
                     <CardTitle className="font-normal group-hover:text-foreground transition-all text-muted-foreground text-xs leading-relaxed line-clamp-3">
                       {workflow.name}
                     </CardTitle>
                   </div>
+                  
+                  {/* Default workflow indicator */}
+                  {workflow.name.endsWith(' (Default)') && (
+                    <div className="flex justify-center mt-1">
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
+                        Default
+                      </span>
+                    </div>
+                  )}
                 </CardHeader>
                 
-                {/* Customize button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenBuilderModal(workflow.id, 'edit');
-                  }}
-                >
-                  <Settings size={12} />
-                </Button>
+                {/* Action buttons */}
+                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Edit button - show for all workflows */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Edit all workflows directly (including default workflows)
+                      handleOpenBuilderModal(workflow.id, 'edit');
+                    }}
+                    title="Edit workflow"
+                  >
+                    <Settings size={12} />
+                  </Button>
+                </div>
               </Card>
             </motion.div>
           ))}

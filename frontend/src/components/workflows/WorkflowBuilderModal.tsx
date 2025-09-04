@@ -7,7 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, Trash2, AlertTriangle, Star } from 'lucide-react';
+import { useIsAdmin } from '@/hooks/use-admin';
+import { toggleWorkflowDefaultStatus } from '@/lib/api';
+import { toast } from 'sonner';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +67,9 @@ export function WorkflowBuilderModal({
   
   // Load all workflows for name validation
   const { data: allWorkflows } = useWorkflows();
+  
+  // Check if current user is admin
+  const { data: isAdmin = false } = useIsAdmin();
   
   const [formData, setFormData] = useState<WorkflowBuilderData>({
     title: '',
@@ -139,6 +145,26 @@ export function WorkflowBuilderModal({
     setFormData(prev => ({ ...prev, files }));
   };
 
+  const handleToggleDefaultStatus = async () => {
+    if (!workflowId) return;
+    
+    try {
+      const updatedWorkflow = await toggleWorkflowDefaultStatus(workflowId);
+      const isNowDefault = updatedWorkflow.name.endsWith(' (Default)');
+      
+      if (isNowDefault) {
+        toast.success('Workflow promoted to default!');
+      } else {
+        toast.success('Workflow de-promoted from default!');
+      }
+      
+      onWorkflowSaved?.(); // Refresh the workflow list
+    } catch (error) {
+      toast.error('Failed to toggle workflow default status');
+      console.error('Error toggling workflow default status:', error);
+    }
+  };
+
   // Check if workflow name already exists in the project
   const isDuplicateName = mode === 'create' && allWorkflows?.some(
     workflow => workflow.name.toLowerCase() === formData.title.trim().toLowerCase() && 
@@ -209,6 +235,33 @@ export function WorkflowBuilderModal({
                   rows={3}
                 />
               </div>
+
+              {/* Admin-only promote to default option */}
+              {isAdmin && mode === 'edit' && workflowId && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-sm font-medium">Admin Options</Label>
+                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div>
+                        <p className="text-sm font-medium">Promote to Default Workflow</p>
+                        <p className="text-xs text-muted-foreground">
+                          Make this workflow available to all users as a default template
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleDefaultStatus}
+                      className="border-blue-200 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                    >
+                      <Star className="h-3 w-3 mr-1" />
+                      {formData.title.endsWith(' (Default)') ? 'De-promote' : 'Promote'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="prompt" className="space-y-4">

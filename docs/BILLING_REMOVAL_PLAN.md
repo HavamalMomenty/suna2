@@ -3,6 +3,11 @@
 ## Overview
 This document outlines the complete plan to remove all billing, payment, subscription, and Stripe-related functionality from the Suna application, making it completely free with unlimited access to all features.
 
+To make the implementation easier, simply 1 give the free user tier all privaleges of the highest tier while 2. giving everyone the free tier 3. removing everything that allows the user to upgrade to a new tier. 
+
+Lastly, it should also 
+
+
 ## Frontend Changes
 
 ### 1. Remove Billing Components
