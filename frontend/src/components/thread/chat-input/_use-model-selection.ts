@@ -29,27 +29,13 @@ export interface CustomModel {
 
 // SINGLE SOURCE OF TRUTH for all model data
 export const MODELS = {
-  // Only the three allowed models
+  // Only Claude Sonnet 4
   'claude-sonnet-4': { 
     tier: 'premium',
     priority: 100, 
-    recommended: true,
-    lowQuality: false,
-    description: 'Claude Sonnet 4 - Anthropic\'s latest and most advanced AI assistant'
-  },
-  'claude-sonnet-3.7': { 
-    tier: 'premium', 
-    priority: 95, 
-    recommended: true,
-    lowQuality: false,
-    description: 'Claude 3.7 - Anthropic\'s most powerful AI assistant'
-  },
-  'gpt-4o': { 
-    tier: 'premium', 
-    priority: 85,
     recommended: false,
     lowQuality: false,
-    description: 'GPT-4o - Optimized for speed, reliability, and cost-effectiveness'
+    description: 'Claude Sonnet 4 - Anthropic\'s latest and most advanced AI assistant'
   },
 };
 

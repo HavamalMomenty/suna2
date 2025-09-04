@@ -24,7 +24,7 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 
 
 SUBSCRIPTION_TIERS = {
-    config.STRIPE_FREE_TIER_ID: {'name': 'free', 'minutes': 60},
+    config.STRIPE_FREE_TIER_ID: {'name': 'free', 'minutes': 999999},  # Effectively unlimited
     config.STRIPE_TIER_2_20_ID: {'name': 'tier_2_20', 'minutes': 120},  # 2 hours
     config.STRIPE_TIER_6_50_ID: {'name': 'tier_6_50', 'minutes': 360},  # 6 hours
     config.STRIPE_TIER_12_100_ID: {'name': 'tier_12_100', 'minutes': 720},  # 12 hours
@@ -292,8 +292,8 @@ async def check_billing_status(client, user_id: str) -> Tuple[bool, str, Optiona
     # Calculate current month's usage
     current_usage = await calculate_monthly_usage(client, user_id)
     
-    # Check if within limits
-    if current_usage >= tier_info['minutes']:
+    # Check if within limits (skip check for free tier with unlimited usage)
+    if tier_info['name'] != 'free' and current_usage >= tier_info['minutes']:
         return False, f"Monthly limit of {tier_info['minutes']} minutes reached. Please upgrade your plan or wait until next month.", subscription
     
     return True, "OK", subscription
