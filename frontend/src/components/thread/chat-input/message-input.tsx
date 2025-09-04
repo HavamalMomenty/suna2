@@ -5,7 +5,6 @@ import { Square, Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
-import { VoiceRecorder } from './voice-recorder';
 import { ModelSelector } from './model-selector';
 import { SubscriptionStatus } from './_use-model-selection';
 import { isLocalMode } from '@/lib/config';
@@ -147,24 +146,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 messages={messages}
               />
             )}
-            <VoiceRecorder
-              onTranscription={onTranscription}
-              disabled={loading || (disabled && !isAgentRunning)}
-            />
           </div>
-          {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <p className='text-sm text-amber-500 hidden sm:block'>Upgrade for full performance</p>
-
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>The free tier is severely limited by inferior models; upgrade to experience the true full Suna experience.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          }
           <div className='flex items-center gap-2'>
             <ModelSelector
               selectedModel={selectedModel}

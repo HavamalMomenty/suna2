@@ -14,7 +14,6 @@ export default function PersonalAccountSettingsPage({
   const items = [
     // { name: "Profile", href: "/settings" },
     // { name: "Teams", href: "/settings/teams" },
-    { name: 'Billing', href: '/settings/billing' },
   ];
   return (
     <>

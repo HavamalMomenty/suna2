@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronDown, Search, AlertTriangle, Crown, ArrowUpRight, Brain, Plus, Edit, Trash } from 'lucide-react';
+import { Check, ChevronDown, Search, AlertTriangle, Plus, Edit, Trash } from 'lucide-react';
 import {
   ModelOption,
   SubscriptionStatus,
@@ -26,8 +26,6 @@ import {
   getCustomModels,
   MODELS // Import the centralized MODELS constant
 } from './_use-model-selection';
-import { PaywallDialog } from '@/components/payment/paywall-dialog';
-import { BillingModal } from '@/components/billing/billing-modal';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { isLocalMode } from '@/lib/config';
@@ -56,9 +54,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   subscriptionStatus,
   refreshCustomModels,
 }) => {
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const [billingModalOpen, setBillingModalOpen] = useState(false);
-  const [lockedModel, setLockedModel] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
@@ -134,21 +129,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     opt.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get free models from modelOptions (helper function)
-  const getFreeModels = () => modelOptions.filter(m => !m.requiresSubscription).map(m => m.id);
-
   // No sorting needed - models are already sorted in the hook
   const sortedModels = filteredOptions;
-
-  // Simplified premium models function - just filter without sorting
-  const getPremiumModels = () => {
-    return modelOptions
-      .filter(m => m.requiresSubscription)
-      .map((m, index) => ({
-        ...m,
-        uniqueKey: getUniqueModelKey(m, index)
-      }));
-  }
 
   // Make sure model IDs are unique for rendering
   const getUniqueModelKey = (model: any, index: number): string => {
@@ -176,33 +158,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     enhancedModelOptions.find((o) => o.id === selectedModel)?.label || 'Select model';
 
   const handleSelect = (id: string) => {
-    // Check if it's a custom model
-    const isCustomModel = customModels.some(model => model.id === id);
-
-    // Custom models are always accessible in local mode
-    if (isCustomModel && isLocalMode()) {
+    // All models are now accessible without subscription restrictions
       onModelChange(id);
       setIsOpen(false);
-      return;
-    }
-
-    // Otherwise use the regular canAccessModel check
-    if (canAccessModel(id)) {
-      onModelChange(id);
-      setIsOpen(false);
-    } else {
-      setLockedModel(id);
-      setPaywallOpen(true);
-    }
-  };
-
-  const handleUpgradeClick = () => {
-    setBillingModalOpen(true);
-  };
-
-  const closeDialog = () => {
-    setPaywallOpen(false);
-    setLockedModel(null);
   };
 
   const handleSearchInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -226,9 +184,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   };
 
-  const premiumModels = sortedModels.filter(m => !getFreeModels().some(id => m.id.includes(id)));
-
-  const shouldDisplayAll = (!isLocalMode() && subscriptionStatus === 'no_subscription') && premiumModels.length > 0;
+  const shouldDisplayAll = false; // Always show all models without premium restrictions
 
   // Handle opening the custom model dialog
   const openAddCustomModelDialog = (e?: React.MouseEvent) => {
@@ -398,11 +354,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     const isCustom = Boolean(opt.isCustom) ||
       (isLocalMode() && customModels.some(model => model.id === opt.id));
 
-    const accessible = isCustom ? true : canAccessModel(opt.id);
-
     // Fix the highlighting logic to use the index parameter instead of searching in filteredOptions
     const isHighlighted = index === highlightedIndex;
-    const isPremium = opt.requiresSubscription;
     const isLowQuality = MODELS[opt.id]?.lowQuality || false;
     const isRecommended = MODELS[opt.id]?.recommended || false;
 
@@ -414,8 +367,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               <DropdownMenuItem
                 className={cn(
                   "text-sm px-3 py-2 mx-2 my-0.5 flex items-center justify-between cursor-pointer",
-                  isHighlighted && "bg-accent",
-                  !accessible && "opacity-70"
+                  isHighlighted && "bg-accent"
                 )}
                 onClick={() => handleSelect(opt.id)}
                 onMouseEnter={() => setHighlightedIndex(index)}
@@ -432,9 +384,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
                       Recommended
                     </span>
-                  )}
-                  {isPremium && !accessible && (
-                    <Crown className="h-3.5 w-3.5 text-blue-500" />
                   )}
                   {/* Custom model actions */}
                   {isLocalMode() && isCustom && (
@@ -466,11 +415,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               </DropdownMenuItem>
             </div>
           </TooltipTrigger>
-          {!accessible ? (
-            <TooltipContent side="left" className="text-xs max-w-xs">
-              <p>Requires subscription to access premium model</p>
-            </TooltipContent>
-          ) : isLowQuality ? (
+          {isLowQuality ? (
             <TooltipContent side="left" className="text-xs max-w-xs">
               <p>Not recommended for complex tasks</p>
             </TooltipContent>
@@ -537,138 +482,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           sideOffset={4}
         >
           <div className="overflow-y-auto w-full scrollbar-hide relative">
-            {/* Completely separate views for subscribers and non-subscribers */}
-            {shouldDisplayAll ? (
-              /* No Subscription View */
-              <div>
-                {/* Available Models Section - ONLY hardcoded free models */}
-                <div className="px-3 py-3 text-xs font-medium text-muted-foreground">
-                  Available Models
-                </div>
-                {/* Only show free models */}
-                {uniqueModels
-                  .filter(m =>
-                    !m.requiresSubscription &&
-                    (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      m.id.toLowerCase().includes(searchQuery.toLowerCase()))
-                  )
-                  .map((model, index) => (
-                    <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className='w-full'>
-                            <DropdownMenuItem
-                              className={cn(
-                                "text-sm mx-2 my-0.5 px-3 py-2 flex items-center justify-between cursor-pointer",
-                                selectedModel === model.id && "bg-accent"
-                              )}
-                              onClick={() => onModelChange(model.id)}
-                              onMouseEnter={() => setHighlightedIndex(filteredOptions.indexOf(model))}
-                            >
-                              <div className="flex items-center">
-                                <span className="font-medium">{model.label}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {/* Show capabilities */}
-                                {(MODELS[model.id]?.lowQuality || false) && (
-                                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                                )}
-                                {(MODELS[model.id]?.recommended || false) && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
-                                    Recommended
-                                  </span>
-                                )}
-                                {selectedModel === model.id && (
-                                  <Check className="h-4 w-4 text-blue-500" />
-                                )}
-                              </div>
-                            </DropdownMenuItem>
-                          </div>
-                        </TooltipTrigger>
-                        {MODELS[model.id]?.lowQuality && (
-                          <TooltipContent side="left" className="text-xs max-w-xs">
-                            <p>Basic model with limited capabilities</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  ))
-                }
-
-                {/* Premium Models Section */}
-                <div className="mt-4 border-t border-border pt-2">
-                  <div className="px-3 py-1.5 text-xs font-medium text-blue-500 flex items-center">
-                    <Crown className="h-3.5 w-3.5 mr-1.5" />
-                    Premium Models
-                  </div>
-
-                  {/* Premium models container with paywall overlay */}
-                  <div className="relative h-40 overflow-hidden px-2">
-                    {getPremiumModels()
-                      .filter(m =>
-                        m.requiresSubscription &&
-                        (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          m.id.toLowerCase().includes(searchQuery.toLowerCase()))
-                      )
-                      .slice(0, 3)
-                      .map((model, index) => (
-                        <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className='w-full'>
-                                <DropdownMenuItem
-                                  className="text-sm px-3 py-2 flex items-center justify-between opacity-70 cursor-pointer pointer-events-none"
-                                >
-                                  <div className="flex items-center">
-                                    <span className="font-medium">{model.label}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {/* Show capabilities */}
-                                    {MODELS[model.id]?.recommended && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium whitespace-nowrap">
-                                        Recommended
-                                      </span>
-                                    )}
-                                    <Crown className="h-3.5 w-3.5 text-blue-500" />
-                                  </div>
-                                </DropdownMenuItem>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="text-xs max-w-xs">
-                              <p>Requires subscription to access premium model</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))
-                    }
-
-                    {/* Absolute positioned paywall overlay with gradient fade */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-transparent flex items-end justify-center">
-                      <div className="w-full p-3">
-                        <div className="rounded-xl bg-gradient-to-br from-blue-50/80 to-blue-200/70 dark:from-blue-950/40 dark:to-blue-900/30 shadow-sm border border-blue-200/50 dark:border-blue-800/50 p-3">
-                          <div className="flex flex-col space-y-2">
-                            <div className="flex items-center">
-                              <Crown className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium">Unlock all models + higher limits</p>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              className="w-full h-8 font-medium"
-                              onClick={handleUpgradeClick}
-                            >
-                              Upgrade now
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* Subscription or other status view */
+            {/* Simplified view - show all models without premium restrictions */}
               <div className='max-h-[320px] overflow-y-auto w-full'>
                 <div className="px-3 py-3 flex justify-between items-center">
                   <span className="text-xs font-medium text-muted-foreground">All Models</span>
@@ -700,24 +514,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     m.id.toLowerCase().includes(searchQuery.toLowerCase())
                   )
-                  // Sort to prioritize recommended paid models first
+                // Sort to prioritize recommended models first
                   .sort((a, b) => {
-                    const aRecommendedPaid = MODELS[a.id]?.recommended && a.requiresSubscription;
-                    const bRecommendedPaid = MODELS[b.id]?.recommended && b.requiresSubscription;
-
-                    if (aRecommendedPaid && !bRecommendedPaid) return -1;
-                    if (!aRecommendedPaid && bRecommendedPaid) return 1;
-
-                    // Secondary sorting: recommended free models next
                     const aRecommended = MODELS[a.id]?.recommended;
                     const bRecommended = MODELS[b.id]?.recommended;
 
                     if (aRecommended && !bRecommended) return -1;
                     if (!aRecommended && bRecommended) return 1;
-
-                    // Paid models next
-                    if (a.requiresSubscription && !b.requiresSubscription) return -1;
-                    if (!a.requiresSubscription && b.requiresSubscription) return 1;
 
                     // Default to alphabetical order
                     return a.label.localeCompare(b.label);
@@ -730,9 +533,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   </div>
                 )}
               </div>
-            )}
           </div>
-          {!shouldDisplayAll && <div className="px-3 py-2 border-t border-border">
+          <div className="px-3 py-2 border-t border-border">
             <div className="relative flex items-center">
               <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input
@@ -745,7 +547,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 className="w-full h-8 px-8 py-1 rounded-lg text-sm focus:outline-none bg-muted"
               />
             </div>
-          </div>}
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -758,29 +560,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         mode={dialogMode}
       />
 
-      {/* Billing Modal */}
-      <BillingModal
-        open={billingModalOpen}
-        onOpenChange={setBillingModalOpen}
-        returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
-      />
-
-      {paywallOpen && (
-        <PaywallDialog
-          open={true}
-          onDialogClose={closeDialog}
-          title="Premium Model"
-          description={
-            lockedModel
-              ? `Subscribe to access ${modelOptions.find(
-                (m) => m.id === lockedModel
-              )?.label}`
-              : 'Subscribe to access premium models with enhanced capabilities'
-          }
-          ctaText="Subscribe Now"
-          cancelText="Maybe Later"
-        />
-      )}
     </div>
   );
 };

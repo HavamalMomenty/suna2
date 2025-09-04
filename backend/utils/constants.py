@@ -1,18 +1,17 @@
 MODEL_ACCESS_TIERS = {
     "free": [
         "anthropic/claude-sonnet-4-20250514",
-        "anthropic/claude-3-7-sonnet-latest"
+        "anthropic/claude-3-7-sonnet-latest",
+        "openai/gpt-4o"
     ],
     "tier_2_20": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -20,13 +19,11 @@ MODEL_ACCESS_TIERS = {
     "tier_6_50": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -34,13 +31,11 @@ MODEL_ACCESS_TIERS = {
     "tier_12_100": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -48,13 +43,11 @@ MODEL_ACCESS_TIERS = {
     "tier_25_200": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -62,13 +55,11 @@ MODEL_ACCESS_TIERS = {
     "tier_50_400": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -76,13 +67,11 @@ MODEL_ACCESS_TIERS = {
     "tier_125_800": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",
@@ -90,13 +79,11 @@ MODEL_ACCESS_TIERS = {
     "tier_200_1000": [
         "openrouter/deepseek/deepseek-chat",
         # "xai/grok-3-mini-fast-beta",
-        "openai/gpt-4o",
         # "openai/gpt-4-turbo",
         # "xai/grok-3-fast-latest",
         "openrouter/google/gemini-2.5-flash-preview-05-20",  # Added
         # "openai/gpt-4",
-        "anthropic/claude-3-7-sonnet-latest",
-        "anthropic/claude-sonnet-4-20250514",
+        
         # "openai/gpt-4.1-2025-04-14",
         # "openrouter/deepseek/deepseek-r1",
         "openrouter/qwen/qwen3-235b-a22b",

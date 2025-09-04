@@ -7,7 +7,7 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_FREE_MODEL_ID = 'deepseek';
+export const DEFAULT_FREE_MODEL_ID = 'claude-sonnet-4';
 export const DEFAULT_PREMIUM_MODEL_ID = 'claude-sonnet-4';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
@@ -29,7 +29,7 @@ export interface CustomModel {
 
 // SINGLE SOURCE OF TRUTH for all model data
 export const MODELS = {
-  // Premium high-priority models
+  // Only the three allowed models
   'claude-sonnet-4': { 
     tier: 'premium',
     priority: 100, 
@@ -44,119 +44,12 @@ export const MODELS = {
     lowQuality: false,
     description: 'Claude 3.7 - Anthropic\'s most powerful AI assistant'
   },
-  'claude-sonnet-3.7-reasoning': { 
-    tier: 'premium', 
-    priority: 95, 
-    recommended: true,
-    lowQuality: false,
-    description: 'Claude 3.7 with enhanced reasoning capabilities'
-  },
-  'gpt-4.1': { 
-    tier: 'premium', 
-    priority: 95,
-    recommended: false,
-    lowQuality: false,
-    description: 'GPT-4.1 - OpenAI\'s most advanced model with enhanced reasoning'
-  },
-  'gemini-2.5-pro-preview': { 
-    tier: 'premium', 
-    priority: 95,
-    recommended: true,
-    lowQuality: false,
-    description: 'Gemini Pro 2.5 - Google\'s latest powerful model with strong reasoning'
-  },
-  'gemini-2.5-pro': { 
-    tier: 'premium', 
-    priority: 95,
-    recommended: true,
-    lowQuality: false,
-    description: 'Gemini Pro 2.5 - Google\'s latest advanced model'
-  },
-  'claude-3.5': { 
-    tier: 'premium', 
-    priority: 90,
-    recommended: true,
-    lowQuality: false,
-    description: 'Claude 3.5 - Anthropic\'s balanced model with solid capabilities'
-  },
-  'gemini-2.5': { 
-    tier: 'premium', 
-    priority: 90,
-    recommended: true,
-    lowQuality: false,
-    description: 'Gemini 2.5 - Google\'s powerful versatile model'
-  },
-  'gemini-flash-2.5:thinking': { 
-    tier: 'premium', 
-    priority: 90,
-    recommended: true,
-    lowQuality: false,
-    description: 'Gemini Flash 2.5 - Google\'s fast, responsive AI model'
-  },
   'gpt-4o': { 
     tier: 'premium', 
     priority: 85,
     recommended: false,
     lowQuality: false,
     description: 'GPT-4o - Optimized for speed, reliability, and cost-effectiveness'
-  },
-  'gpt-4-turbo': { 
-    tier: 'premium', 
-    priority: 85,
-    recommended: false,
-    lowQuality: false,
-    description: 'GPT-4 Turbo - OpenAI\'s powerful model with a great balance of performance and cost'
-  },
-  'gpt-4': { 
-    tier: 'premium', 
-    priority: 80,
-    recommended: false,
-    lowQuality: false,
-    description: 'GPT-4 - OpenAI\'s highly capable model with advanced reasoning'
-  },
-  'deepseek-chat-v3-0324': { 
-    tier: 'premium', 
-    priority: 75,
-    recommended: true,
-    lowQuality: false,
-    description: 'DeepSeek Chat - Advanced AI assistant with strong reasoning'
-  },
-  
-  // Free tier models
-  'deepseek-r1': { 
-    tier: 'free', 
-    priority: 60,
-    recommended: false,
-    lowQuality: false,
-    description: 'DeepSeek R1 - Advanced model with enhanced reasoning and coding capabilities'
-  },
-  'deepseek': { 
-    tier: 'free', 
-    priority: 50,
-    recommended: false,
-    lowQuality: true,
-    description: 'DeepSeek - Free tier model with good general capabilities'
-  },
-  'gemini-flash-2.5': { 
-    tier: 'free', 
-    priority: 50,
-    recommended: false,
-    lowQuality: true,
-    description: 'Gemini Flash - Google\'s faster, more efficient model'
-  },
-  'grok-3-mini': { 
-    tier: 'free', 
-    priority: 45,
-    recommended: false,
-    lowQuality: true,
-    description: 'Grok-3 Mini - Smaller, faster version of Grok-3 for simpler tasks'
-  },
-  'qwen3': { 
-    tier: 'free', 
-    priority: 40,
-    recommended: false,
-    lowQuality: true,
-    description: 'Qwen3 - Alibaba\'s powerful multilingual language model'
   },
 };
 
@@ -283,39 +176,44 @@ export const useModelSelection = () => {
         },
       ];
     } else {
-      // Process API-provided models
-      models = modelsData.models.map(model => {
-        const shortName = model.short_name || model.id;
-        const displayName = model.display_name || shortName;
-        
-        // Format the display label
-        let cleanLabel = displayName;
-        if (cleanLabel.includes('/')) {
-          cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
-        }
-        
-        cleanLabel = cleanLabel
-          .replace(/-/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
-        
-        // Get model data from our central MODELS constant
-        const modelData = MODELS[shortName] || {};
-        const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
-        
-        return {
-          id: shortName,
-          label: cleanLabel,
-          requiresSubscription: isPremium,
-          description: modelData.description || 
-            (isPremium ? MODEL_TIERS.premium.baseDescription : MODEL_TIERS.free.baseDescription),
-          top: modelData.priority >= 90, // Mark high-priority models as "top"
-          priority: modelData.priority || 0,
-          lowQuality: modelData.lowQuality || false,
-          recommended: modelData.recommended || false
-        };
-      });
+      // Process API-provided models - only include models that exist in our MODELS constant
+      models = modelsData.models
+        .filter(model => {
+          const shortName = model.short_name || model.id;
+          return MODELS.hasOwnProperty(shortName);
+        })
+        .map(model => {
+          const shortName = model.short_name || model.id;
+          const displayName = model.display_name || shortName;
+          
+          // Format the display label
+          let cleanLabel = displayName;
+          if (cleanLabel.includes('/')) {
+            cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+          }
+          
+          cleanLabel = cleanLabel
+            .replace(/-/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
+          // Get model data from our central MODELS constant
+          const modelData = MODELS[shortName] || {};
+          const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
+          
+          return {
+            id: shortName,
+            label: cleanLabel,
+            requiresSubscription: false, // All models are now free
+            description: modelData.description || 
+              (isPremium ? MODEL_TIERS.premium.baseDescription : MODEL_TIERS.free.baseDescription),
+            top: modelData.priority >= 90, // Mark high-priority models as "top"
+            priority: modelData.priority || 0,
+            lowQuality: modelData.lowQuality || false,
+            recommended: modelData.recommended || false
+          };
+        });
     }
     
     // Add custom models if in local mode
