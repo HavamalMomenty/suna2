@@ -3,8 +3,11 @@
 import { siteConfig } from '@/lib/home';
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/components/AuthProvider';
 
 const IntroSection: React.FC = () => {
+  const { user } = useAuth();
+  
   return (
     <section id="intro" className="relative py-16 md:py-24 -mt-16 md:-mt-24">
       {/* Background gradient overlay */}
@@ -32,14 +35,25 @@ const IntroSection: React.FC = () => {
               >
                 Explore Use Cases
               </motion.a>
-              <motion.a 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                href="/dashboard" 
-                className="px-6 py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors"
-              >
-                Go to Dashboard
-              </motion.a>
+              {user ? (
+                <motion.a 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  href="/dashboard" 
+                  className="px-6 py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors"
+                >
+                  Go to Dashboard
+                </motion.a>
+              ) : (
+                <motion.a 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  href="/auth" 
+                  className="px-6 py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors"
+                >
+                  Get Started
+                </motion.a>
+              )}
             </div>
           </div>
         </motion.div>

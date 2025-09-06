@@ -1124,36 +1124,6 @@ export const siteConfig = {
         { id: 3, title: 'Contact', url: '/contact' },
       ],
     },
-    {
-      title: 'Contact Us',
-      links: [
-        {
-          id: 7,
-          title: 'Email',
-          url: 'mailto:adrian@momenty.dk',
-        },
-      ],
-    },
-    {
-      title: 'Legal',
-      links: [
-        {
-          id: 4,
-          title: 'Privacy Policy',
-          url: '',
-        },
-        {
-          id: 5,
-          title: 'Terms of Service',
-          url: '',
-        },
-        {
-          id: 6,
-          title: 'License Apache 2.0',
-          url: '',
-        },
-      ],
-    },
   ],
   useCases: [
     {

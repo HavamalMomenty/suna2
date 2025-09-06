@@ -264,13 +264,23 @@ export function HeroSection() {
             {hero.description}
           </p>
           <div className="flex items-center justify-center mt-4">
-            <Link 
-              href="/dashboard" 
-              className="px-8 py-4 rounded-full bg-secondary text-secondary-foreground font-medium text-lg hover:bg-secondary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-secondary/20 transform hover:-translate-y-1 flex items-center gap-2"
-            >
-              Go to Dashboard
-              <ArrowRight className="size-5" />
-            </Link>
+            {user ? (
+              <Link 
+                href="/dashboard" 
+                className="px-8 py-4 rounded-full bg-secondary text-secondary-foreground font-medium text-lg hover:bg-secondary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-secondary/20 transform hover:-translate-y-1 flex items-center gap-2"
+              >
+                Go to Dashboard
+                <ArrowRight className="size-5" />
+              </Link>
+            ) : (
+              <Link 
+                href="/auth" 
+                className="px-8 py-4 rounded-full bg-secondary text-secondary-foreground font-medium text-lg hover:bg-secondary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-secondary/20 transform hover:-translate-y-1 flex items-center gap-2"
+              >
+                Get Started
+                <ArrowRight className="size-5" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -378,16 +388,6 @@ export function HeroSection() {
             </div>
           </form>
 
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
-          </div>
         </DialogContent>
       </Dialog>
 

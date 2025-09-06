@@ -3,10 +3,10 @@ import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
-  title: 'Credentials | Kortix Suna',
+  title: 'Credentials | Momenty Node',
   description: 'Create and manage credentials to your services',
   openGraph: {
-    title: 'Credentials | Kortix Suna',
+    title: 'Credentials | Momenty Node',
     description: 'Create and manage credentials to your services',
     type: 'website',
   },

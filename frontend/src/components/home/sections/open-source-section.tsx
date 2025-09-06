@@ -15,7 +15,7 @@ export function OpenSourceSection() {
             100% Open Source
           </h2>
           <p className="text-muted-foreground text-center text-balance font-medium">
-            Suna is fully open source. Join our community and help shape the
+            Node is fully open source. Join our community and help shape the
             future of AI.
           </p>
         </SectionHeader>
@@ -32,8 +32,7 @@ export function OpenSourceSection() {
                   The Generalist AI Agent
                 </h3>
                 <p className="text-muted-foreground mt-2">
-                  Explore, contribute, or fork our repository. Suna is built
-                  with transparency and collaboration at its core.
+                  Node is a a real estate agent built from opensource software.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -42,9 +41,6 @@ export function OpenSourceSection() {
                 </span>
                 <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary/10 border-secondary/20 text-secondary">
                   Python
-                </span>
-                <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary/10 border-secondary/20 text-secondary">
-                  Apache 2.0 License
                 </span>
               </div>
               <Link
@@ -178,12 +174,6 @@ export function OpenSourceSection() {
                         strokeLinejoin="round"
                       ></path>
                     </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-medium">Apache 2.0</h4>
-                    <p className="text-muted-foreground text-sm">
-                      Free to use and modify
-                    </p>
                   </div>
                 </div>
               </div>
