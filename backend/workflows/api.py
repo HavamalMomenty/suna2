@@ -181,7 +181,8 @@ def _map_db_to_workflow_definition(data: dict) -> WorkflowDefinition:
         max_execution_time=definition.get('max_execution_time', 3600),
         max_retries=definition.get('max_retries', 3),
         master_prompt=data.get('master_prompt'),
-        login_template=data.get('login_template')
+        login_template=data.get('login_template'),
+        default_workflow=data.get('default_workflow', False)
     )
 
 @router.get("/workflows", response_model=List[WorkflowDefinition])
@@ -210,9 +211,9 @@ async def list_workflows(
             workflows.append(workflow)
             workflow_ids.add(data['id'])
         
-        # Add default workflows (identified by name ending with "(Default)")
+        # Add default workflows (identified by default_workflow = true)
         # but exclude any that are already in the user's workflows
-        default_result = await client.table('workflows').select('*').like('name', '% (Default)').execute()
+        default_result = await client.table('workflows').select('*').eq('default_workflow', True).execute()
         
         for data in default_result.data:
             if data['id'] not in workflow_ids:  # Avoid duplicates
@@ -243,22 +244,15 @@ async def toggle_workflow_default_status(
             raise HTTPException(status_code=404, detail="Workflow not found")
         
         current_workflow = result.data[0]
-        current_name = current_workflow['name']
-        is_currently_default = current_name.endswith(" (Default)")
+        is_currently_default = current_workflow.get('default_workflow', False)
         
         # Toggle the default status
-        if is_currently_default:
-            # De-promote: remove "(Default)" suffix
-            new_name = current_name.replace(" (Default)", "")
-            action = "de-promoted from default"
-        else:
-            # Promote: add "(Default)" suffix
-            new_name = f"{current_name} (Default)"
-            action = "promoted to default"
+        new_default_status = not is_currently_default
+        action = "promoted to default" if new_default_status else "de-promoted from default"
         
         # Update the workflow
         update_result = await client.table('workflows').update({
-            "name": new_name
+            "default_workflow": new_default_status
         }).eq('id', workflow_id).execute()
         
         if not update_result.data:
@@ -286,20 +280,16 @@ async def create_default_workflow(
         account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', admin_user_id).execute()
         account_id = account_result.data[0]['account_id'] if account_result.data else admin_user_id
         
-        # Ensure the name ends with "(Default)" to identify it as a default workflow
-        base_name = workflow_data.get('name', 'Untitled Default Workflow')
-        if not base_name.endswith(" (Default)"):
-            base_name = f"{base_name} (Default)"
-        
         # Create the default workflow
         default_workflow_data = {
-            "name": base_name,
+            "name": workflow_data.get('name', 'Untitled Default Workflow'),
             "description": workflow_data.get('description'),
             "project_id": x_project_id,  # Use admin's project
             "account_id": account_id,  # Use admin's account
             "created_by": admin_user_id,  # Use admin user ID to avoid foreign key issues
             "master_prompt": workflow_data.get('master_prompt'),
             "login_template": workflow_data.get('login_template'),
+            "default_workflow": True,  # Mark as default workflow
             "definition": workflow_data.get('definition', {
                 "type": "builder_workflow",
                 "version": "1.0",
@@ -426,9 +416,9 @@ async def get_workflow(
         # First try to get user's own workflow
         result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
         
-        # If not found, try to get default workflows (created by admin users)
+        # If not found, try to get default workflows
         if not result.data:
-            result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
+            result = await client.table('workflows').select('*').eq('id', workflow_id).eq('default_workflow', True).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -451,13 +441,13 @@ async def update_workflow(
     """Update a workflow."""
     try:
         client = await db.client
-        # Allow editing workflows created by the user OR default workflows (identified by name ending with "(Default)")
+        # Allow editing workflows created by the user OR default workflows
         existing = await client.table('workflows').select('*').eq('id', workflow_id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
         
         workflow = existing.data[0]
-        is_default_workflow = workflow['name'].endswith(' (Default)')
+        is_default_workflow = workflow.get('default_workflow', False)
         is_owner = workflow['created_by'] == user_id
         
         if not is_owner and not is_default_workflow:
@@ -563,9 +553,9 @@ async def execute_workflow(
         # First try to get user's own workflow
         result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
         
-        # If not found, try to get default workflows (created by admin users)
+        # If not found, try to get default workflows
         if not result.data:
-            result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
+            result = await client.table('workflows').select('*').eq('id', workflow_id).eq('default_workflow', True).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -850,9 +840,9 @@ async def get_workflow_flow(
         # First try to get user's own workflow
         workflow_result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
         
-        # If not found, try to get default workflows (created by admin users)
+        # If not found, try to get default workflows
         if not workflow_result.data:
-            workflow_result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
+            workflow_result = await client.table('workflows').select('*').eq('id', workflow_id).eq('default_workflow', True).execute()
         
         if not workflow_result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -884,13 +874,13 @@ async def update_workflow_flow(
     """Update the visual flow of a workflow and convert it to executable definition."""
     try:
         client = await db.client
-        # Allow editing workflows created by the user OR default workflows (identified by name ending with "(Default)")
+        # Allow editing workflows created by the user OR default workflows
         existing = await client.table('workflows').select('*').eq('id', workflow_id).execute()
         if not existing.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
         
         workflow = existing.data[0]
-        is_default_workflow = workflow['name'].endswith(' (Default)')
+        is_default_workflow = workflow.get('default_workflow', False)
         is_owner = workflow['created_by'] == user_id
         
         if not is_owner and not is_default_workflow:

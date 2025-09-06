@@ -75,8 +75,8 @@ export default function WorkflowsPage() {
         setWorkflows(workflowsData);
         
         // Separate workflows into pre-built (default) and custom
-        const preBuilt = workflowsData.filter(w => w.name.endsWith(' (Default)'));
-        const custom = workflowsData.filter(w => !w.name.endsWith(' (Default)'));
+        const preBuilt = workflowsData.filter(w => w.default_workflow === true);
+        const custom = workflowsData.filter(w => w.default_workflow !== true);
         setPreBuiltWorkflows(preBuilt);
         setCustomWorkflows(custom);
       } catch (err) {
@@ -594,8 +594,8 @@ export default function WorkflowsPage() {
       setWorkflows(workflowsData);
       
       // Separate workflows into pre-built (default) and custom
-      const preBuilt = workflowsData.filter(w => w.name.endsWith(' (Default)'));
-      const custom = workflowsData.filter(w => !w.name.endsWith(' (Default)'));
+      const preBuilt = workflowsData.filter(w => w.default_workflow === true);
+      const custom = workflowsData.filter(w => w.default_workflow !== true);
       setPreBuiltWorkflows(preBuilt);
       setCustomWorkflows(custom);
     } catch (err) {

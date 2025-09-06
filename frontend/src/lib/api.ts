@@ -140,6 +140,7 @@ export type Workflow = {
   account_id: string;
   created_by: string;
   master_prompt?: string; // Add master_prompt field
+  default_workflow?: boolean; // Indicates if this is a default/pre-built workflow
   definition: {
     name: string;
     description: string;
@@ -2024,6 +2025,7 @@ export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
       project_id: workflowData.project_id,
       account_id: workflowData.created_by || '',
       master_prompt: workflowData.master_prompt, // Include master_prompt field
+      default_workflow: workflowData.default_workflow || false, // Include default_workflow field
       definition: {
         name: workflowData.name,
         description: workflowData.description || '',

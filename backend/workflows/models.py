@@ -79,6 +79,7 @@ class WorkflowDefinition(BaseModel):
     max_retries: int = 3
     master_prompt: Optional[str] = None  # Added for workflow builder
     login_template: Optional[str] = None  # Added for workflow builder
+    default_workflow: bool = False  # Indicates if this is a default/pre-built workflow
 
     nodes: Optional[List['WorkflowNode']] = None
     edges: Optional[List['WorkflowEdge']] = None

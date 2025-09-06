@@ -74,8 +74,8 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
   }
 
   // Separate workflows into pre-built and custom
-  const preBuiltWorkflows = workflows.filter(w => w.name.endsWith(' (Default)'));
-  const customWorkflows = workflows.filter(w => !w.name.endsWith(' (Default)'));
+  const preBuiltWorkflows = workflows.filter(w => w.default_workflow === true);
+  const customWorkflows = workflows.filter(w => w.default_workflow !== true);
 
   const renderWorkflowSection = (workflows: Workflow[], title: string, showAddButton: boolean = false) => {
     if (workflows.length === 0 && !showAddButton) {
@@ -143,7 +143,7 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
                     onClick={() => handleWorkflowClick(workflow)}
                   >
                     <div className="flex items-start justify-center gap-1.5">
-                      {workflow.name.endsWith(' (Default)') && (
+                      {workflow.default_workflow && (
                         <div className="flex-shrink-0 mt-0.5">
                           <Star size={14} className="text-blue-600 dark:text-blue-400" />
                         </div>
@@ -154,7 +154,7 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
                     </div>
                     
                     {/* Default workflow indicator */}
-                    {workflow.name.endsWith(' (Default)') && (
+                    {workflow.default_workflow && (
                       <div className="flex justify-center mt-1">
                         <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
                           Default
