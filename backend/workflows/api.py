@@ -423,7 +423,12 @@ async def get_workflow(
     try:
         client = await db.client
         
+        # First try to get user's own workflow
         result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
+        
+        # If not found, try to get default workflows (created by admin users)
+        if not result.data:
+            result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -555,7 +560,13 @@ async def execute_workflow(
     try:
         client = await db.client
 
+        # First try to get user's own workflow
         result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
+        
+        # If not found, try to get default workflows (created by admin users)
+        if not result.data:
+            result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
+        
         if not result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")
         
@@ -836,7 +847,12 @@ async def get_workflow_flow(
                 metadata=data.get('metadata', {})
             )
         
+        # First try to get user's own workflow
         workflow_result = await client.table('workflows').select('*').eq('id', workflow_id).eq('created_by', user_id).execute()
+        
+        # If not found, try to get default workflows (created by admin users)
+        if not workflow_result.data:
+            workflow_result = await client.table('workflows').select('*').eq('id', workflow_id).like('name', '% (Default)').execute()
         
         if not workflow_result.data:
             raise HTTPException(status_code=404, detail="Workflow not found")

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Workflow as WorkflowIcon, Power, PowerOff, Loader2, Settings, Play } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Power, PowerOff, Loader2, Settings, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -36,6 +36,8 @@ export default function WorkflowsPage() {
   }, [flagLoading, workflowsEnabled, router]);
 
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [preBuiltWorkflows, setPreBuiltWorkflows] = useState<Workflow[]>([]);
+  const [customWorkflows, setCustomWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [executingWorkflows, setExecutingWorkflows] = useState<Set<string>>(new Set());
@@ -71,6 +73,12 @@ export default function WorkflowsPage() {
         setProjectId(firstProject.id);
         const workflowsData = await getWorkflows(firstProject.id);
         setWorkflows(workflowsData);
+        
+        // Separate workflows into pre-built (default) and custom
+        const preBuilt = workflowsData.filter(w => w.name.endsWith(' (Default)'));
+        const custom = workflowsData.filter(w => !w.name.endsWith(' (Default)'));
+        setPreBuiltWorkflows(preBuilt);
+        setCustomWorkflows(custom);
       } catch (err) {
         console.error('Error loading workflows:', err);
         setError(err instanceof Error ? err.message : 'Failed to load workflows');
@@ -80,6 +88,39 @@ export default function WorkflowsPage() {
     };
     loadData();
   }, []);
+
+  // Refetch workflows when the page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && projectId) {
+        console.log('Page became visible, refetching workflows...');
+        fetchWorkflows();
+      }
+    };
+
+    const handleFocus = () => {
+      if (projectId) {
+        console.log('Window focused, refetching workflows...');
+        fetchWorkflows();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [projectId]);
+
+  // Refetch workflows when component mounts (user navigates to workflows page)
+  useEffect(() => {
+    if (projectId) {
+      console.log('Workflows page mounted, refetching workflows...');
+      fetchWorkflows();
+    }
+  }, [projectId]);
 
   const handleRunWorkflow = async (workflowId: string) => {
     if (!projectId) {
@@ -297,167 +338,66 @@ export default function WorkflowsPage() {
     }
   };
 
-  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
-    setBuilderModalOpen(true);
-    setBuilderWorkflowId(workflowId);
-    setBuilderMode(mode);
-  };
+  const renderWorkflowCards = (workflows: Workflow[], sectionTitle: string, showAddButton: boolean = false) => {
 
-  const handleCloseBuilderModal = () => {
-    setBuilderModalOpen(false);
-    setBuilderWorkflowId(null);
-    setBuilderMode('create');
-  };
-
-  const fetchWorkflows = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const workflowsData = await getWorkflows(projectId);
-              // Workflows fetched successfully
-      setWorkflows(workflowsData);
-    } catch (err) {
-      console.error('Error loading workflows:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load workflows');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-            // Workflows state updated
-  }, [workflows]);
-
-  if (flagLoading) {
     return (
-      <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold">Workflows</h1>
-            <p className="text-muted-foreground">
-              Create and manage automated agent workflows
+            <h2 className="text-lg font-semibold">{sectionTitle}</h2>
+            <p className="text-sm text-muted-foreground">
+              {sectionTitle === "Pre-built Workflows" 
+                ? "Ready-to-use workflows created by administrators"
+                : "Your custom workflows and automations"
+              }
             </p>
           </div>
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
-              <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
-                <Skeleton className="h-24 w-full rounded-xl" />
-              </div>
-              <div className="space-y-2 mt-4 mb-4">
-                <Skeleton className="h-6 w-32 rounded" />
-                <Skeleton className="h-4 w-24 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (!workflowsEnabled) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold">Workflows</h1>
-            <p className="text-muted-foreground">
-              Create and manage automated agent workflows
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
-              <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
-                <Skeleton className="h-24 w-full rounded-xl" />
-              </div>
-              <div className="space-y-2 mt-4 mb-4">
-                <Skeleton className="h-6 w-32 rounded" />
-                <Skeleton className="h-4 w-24 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold">Workflows</h1>
-            <p className="text-muted-foreground">
-              Create and manage automated agent workflows
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error Loading Workflows</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold">Workflows</h1>
-          <p className="text-muted-foreground">
-            Create and manage automated agent workflows
-          </p>
-        </div>
-        <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={loading || creating}>
-          {creating ? (
-            <Loader2 className="animate-spin rounded-full h-4 w-4" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          {creating ? "Creating..." : "New Workflow"}
-        </Button>
-      </div>
-
-      {workflows.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="rounded-full bg-muted p-6 mx-auto mb-4 w-fit">
-              <Plus className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">No workflows yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create your first workflow to get started with automation
-            </p>
-            <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={creating}>
+          {showAddButton && (
+            <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={loading || creating}>
               {creating ? (
                 <Loader2 className="animate-spin rounded-full h-4 w-4" />
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              {creating ? "Creating..." : "Create Your First Workflow"}
+              {creating ? "Creating..." : "New Workflow"}
             </Button>
-          </div>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          {workflows.map((workflow, index) => (
-            <div 
-              key={workflow.id}
-              className="bg-neutral-100 dark:bg-sidebar border border-border rounded-2xl overflow-hidden hover:bg-muted/50 transition-all duration-200 group"
-            >
+
+        {workflows.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="rounded-full bg-muted p-6 mx-auto mb-4 w-fit">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">
+                {sectionTitle === "Pre-built Workflows" ? "No pre-built workflows available" : "No workflows yet"}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {sectionTitle === "Pre-built Workflows" 
+                  ? "Pre-built workflows will appear here when administrators create them"
+                  : "Create your first workflow to get started with automation"
+                }
+              </p>
+              {showAddButton && (
+                <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={creating}>
+                  {creating ? (
+                    <Loader2 className="animate-spin rounded-full h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  {creating ? "Creating..." : "Create Your First Workflow"}
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            {workflows.map((workflow, index) => (
+              <div 
+                key={workflow.id}
+                className="bg-neutral-100 dark:bg-sidebar border border-border rounded-2xl overflow-hidden hover:bg-muted/50 transition-all duration-200 group"
+              >
                 <div 
                   className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100"
                   style={{ backgroundColor: getWorkflowColor(workflow.status) }}
@@ -466,7 +406,9 @@ export default function WorkflowsPage() {
                     {executingWorkflows.has(workflow.id) ? (
                       <Loader2 className="animate-spin rounded-full h-12 w-12" />
                     ) : (
-                      <WorkflowIcon />
+                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                        <div className="w-8 h-8 bg-white/40 rounded"></div>
+                      </div>
                     )}
                   </div>
 
@@ -628,6 +570,147 @@ export default function WorkflowsPage() {
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
+    setBuilderModalOpen(true);
+    setBuilderWorkflowId(workflowId);
+    setBuilderMode(mode);
+  };
+
+  const handleCloseBuilderModal = () => {
+    setBuilderModalOpen(false);
+    setBuilderWorkflowId(null);
+    setBuilderMode('create');
+  };
+
+  const fetchWorkflows = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const workflowsData = await getWorkflows(projectId);
+      setWorkflows(workflowsData);
+      
+      // Separate workflows into pre-built (default) and custom
+      const preBuilt = workflowsData.filter(w => w.name.endsWith(' (Default)'));
+      const custom = workflowsData.filter(w => !w.name.endsWith(' (Default)'));
+      setPreBuiltWorkflows(preBuilt);
+      setCustomWorkflows(custom);
+    } catch (err) {
+      console.error('Error loading workflows:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load workflows');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+            // Workflows state updated
+  }, [workflows]);
+
+  if (flagLoading) {
+    return (
+      <div className="container max-w-7xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold">Workflows</h1>
+            <p className="text-muted-foreground">
+              Create and manage automated agent workflows
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
+              <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
+                <Skeleton className="h-24 w-full rounded-xl" />
+              </div>
+              <div className="space-y-2 mt-4 mb-4">
+                <Skeleton className="h-6 w-32 rounded" />
+                <Skeleton className="h-4 w-24 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (!workflowsEnabled) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold">Workflows</h1>
+            <p className="text-muted-foreground">
+              Create and manage automated agent workflows
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-flow-row auto-rows-auto w-full">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="p-2 bg-neutral-100 dark:bg-sidebar rounded-2xl overflow-hidden group">
+              <div className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100">
+                <Skeleton className="h-24 w-full rounded-xl" />
+              </div>
+              <div className="space-y-2 mt-4 mb-4">
+                <Skeleton className="h-6 w-32 rounded" />
+                <Skeleton className="h-4 w-24 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold">Workflows</h1>
+            <p className="text-muted-foreground">
+              Create and manage automated agent workflows
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error Loading Workflows</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-bold">Workflows</h1>
+          <p className="text-muted-foreground">
+            Create and manage automated agent workflows
+          </p>
+        </div>
+      </div>
+
+      {/* Pre-built Workflows Section */}
+      {renderWorkflowCards(preBuiltWorkflows, "Pre-built Workflows", false)}
+
+      {/* Custom Workflows Section */}
+      {renderWorkflowCards(customWorkflows, "Custom Workflows", true)}
+
       {projectId && (
         <WorkflowBuilderModal 
           isOpen={builderModalOpen} 

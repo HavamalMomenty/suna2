@@ -72,14 +72,14 @@ export const siteConfig = {
   hero: {
     title: 'Node, the AI Employee.',
     description:
-      'Node by Momenty – transforms complex business workflows into automated AI-driven processes.',
+      'Transform complex business workflows into automated AI-driven processes',
 
       //Built on an agentic system core and tailored to your organization, Momenty is context-engineered to handle advanced, industry-specific tasks in Real Estate—saving time, reducing errors, and unlocking new productivity.
     inputPlaceholder: 'Ask Node to...',
   },
   introSection: {
-    title: 'Momenty transforms complex business workflows into automated AI-driven processes.',
-    description: 'Built on an agentic system core tailored to your organization, Momenty is context-engineered to handle advanced, industry-specific tasks—saving time, reducing errors, and unlocking new productivity.',
+    title: 'Momenty helps your organization automate complex real estate analysis tasks',
+    description: 'Node is built on an agentic system core, that has access to all danish real estate related data. Node is engineered to handle advanced, real-estate related tasks such as underwritting real estate investments, doing ESG analysis of a property and producing professional investment overviews',
   },
   useCasesSection: {
     title: 'Use Cases',
@@ -88,7 +88,7 @@ export const siteConfig = {
         id: 1,
         title: 'Automated Underwriting → IC Paper',
         subtitle: 'For Real Estate Private Equity',
-        description: 'Upload an Investment Memorandum and let Momenty:',
+        description: 'Upload an Investment Memorandum and let Node:',
         features: [
           'Extract key assumptions, figures, and deal structure.',
           'Fill in your financial underwriting template.',
@@ -1130,7 +1130,7 @@ export const siteConfig = {
       id: 'competitor-analysis',
       title: 'Competitor Analysis',
       description:
-        'Analyze the market for my next company in the healthcare industry, located in the UK. Give me the major players, their market size, strengths, and weaknesses, and add their website URLs. Once done, generate a PDF report.',
+        'Analyze the market for a new real estate project',
       category: 'research',
       featured: true,
       icon: (

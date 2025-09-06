@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, RefreshCw, Workflow as WorkflowIcon, Star } from 'lucide-react';
+import { Plus, Settings, RefreshCw, Star } from 'lucide-react';
 import { WorkflowBuilderModal } from './WorkflowBuilderModal';
 import { useQuery } from '@tanstack/react-query';
 import { getWorkflows, type Workflow } from '@/lib/api';
@@ -73,139 +73,154 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
     );
   }
 
-  // Show all workflows, not just first 3
-  const displayedWorkflows = workflows;
+  // Separate workflows into pre-built and custom
+  const preBuiltWorkflows = workflows.filter(w => w.name.endsWith(' (Default)'));
+  const customWorkflows = workflows.filter(w => !w.name.endsWith(' (Default)'));
 
-  return (
-    <div className="w-full max-w-3xl mx-auto px-4">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-xs text-muted-foreground font-medium">Workflows</span>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => refetch()}
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw size={10} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleOpenBuilderModal(null, 'create')}
-            className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Plus size={10} />
-            Add
-          </Button>
-        </div>
-      </div>
+  const renderWorkflowSection = (workflows: Workflow[], title: string, showAddButton: boolean = false) => {
+    if (workflows.length === 0 && !showAddButton) {
+      return null;
+    }
 
-      {displayedWorkflows.length === 0 ? (
-        // Empty state
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          <Card
-            className="group cursor-pointer h-full shadow-none transition-all bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 p-0 justify-center border-dashed"
-            onClick={() => handleOpenBuilderModal(null, 'create')}
-          >
-            <CardHeader className="p-4 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Plus size={20} />
-                <span className="text-xs">Create your first workflow</span>
-              </div>
-            </CardHeader>
-          </Card>
+    return (
+      <div className="space-y-3 mb-6">
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-muted-foreground font-medium">{title}</span>
+          {showAddButton && (
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetch()}
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw size={10} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleOpenBuilderModal(null, 'create')}
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Plus size={10} />
+                Add
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {displayedWorkflows.map((workflow, index) => (
-            <motion.div
-              key={workflow.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                duration: 0.3,
-                delay: index * 0.05,
-                ease: "easeOut"
-              }}
-            >
-                                   <Card className={`group cursor-pointer h-full shadow-none transition-all p-0 justify-center relative ${
-                       workflow.name.endsWith(' (Default)')
-                         ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800'
-                         : 'bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60'
-                     }`}>
-                <CardHeader 
-                  className="p-2 grid-rows-1"
-                  onClick={() => handleWorkflowClick(workflow)}
-                >
-                  <div className="flex items-start justify-center gap-1.5">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {workflow.name.endsWith(' (Default)') ? (
-                        <Star size={14} className="text-blue-600 dark:text-blue-400" />
-                      ) : (
-                        <WorkflowIcon size={14} className="text-blue-600 dark:text-blue-400" />
-                      )}
-                    </div>
-                    <CardTitle className="font-normal group-hover:text-foreground transition-all text-muted-foreground text-xs leading-relaxed line-clamp-3">
-                      {workflow.name}
-                    </CardTitle>
-                  </div>
-                  
-                  {/* Default workflow indicator */}
-                  {workflow.name.endsWith(' (Default)') && (
-                    <div className="flex justify-center mt-1">
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
-                        Default
-                      </span>
-                    </div>
-                  )}
-                </CardHeader>
-                
-                {/* Action buttons */}
-                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Edit button - show for all workflows */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Edit all workflows directly (including default workflows)
-                      handleOpenBuilderModal(workflow.id, 'edit');
-                    }}
-                    title="Edit workflow"
-                  >
-                    <Settings size={12} />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-          
-          {/* Add workflow card - always show if there's space */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: 0.3,
-              delay: displayedWorkflows.length * 0.05,
-              ease: "easeOut"
-            }}
-          >
+
+        {workflows.length === 0 ? (
+          // Empty state
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             <Card
               className="group cursor-pointer h-full shadow-none transition-all bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 p-0 justify-center border-dashed"
               onClick={() => handleOpenBuilderModal(null, 'create')}
             >
-              <CardHeader className="p-2 flex items-center justify-center">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Plus size={14} />
-                  <span className="text-xs">Add workflow</span>
+              <CardHeader className="p-4 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Plus size={20} />
+                  <span className="text-xs">Create your first workflow</span>
                 </div>
               </CardHeader>
             </Card>
-          </motion.div>
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {workflows.map((workflow, index) => (
+              <motion.div
+                key={workflow.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.05,
+                  ease: "easeOut"
+                }}
+              >
+                <Card className="group cursor-pointer h-full shadow-none transition-all p-0 justify-center relative bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60">
+                  <CardHeader 
+                    className="p-2 grid-rows-1"
+                    onClick={() => handleWorkflowClick(workflow)}
+                  >
+                    <div className="flex items-start justify-center gap-1.5">
+                      {workflow.name.endsWith(' (Default)') && (
+                        <div className="flex-shrink-0 mt-0.5">
+                          <Star size={14} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                      )}
+                      <CardTitle className="font-normal group-hover:text-foreground transition-all text-muted-foreground text-xs leading-relaxed line-clamp-3">
+                        {workflow.name}
+                      </CardTitle>
+                    </div>
+                    
+                    {/* Default workflow indicator */}
+                    {workflow.name.endsWith(' (Default)') && (
+                      <div className="flex justify-center mt-1">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
+                          Default
+                        </span>
+                      </div>
+                    )}
+                  </CardHeader>
+                  
+                  {/* Action buttons */}
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Edit button - show for all workflows */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Edit all workflows directly (including default workflows)
+                        handleOpenBuilderModal(workflow.id, 'edit');
+                      }}
+                      title="Edit workflow"
+                    >
+                      <Settings size={12} />
+                    </Button>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+            
+            {/* Add workflow card - only show for custom workflows section */}
+            {showAddButton && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.3,
+                  delay: workflows.length * 0.05,
+                  ease: "easeOut"
+                }}
+              >
+                <Card
+                  className="group cursor-pointer h-full shadow-none transition-all bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 p-0 justify-center border-dashed"
+                  onClick={() => handleOpenBuilderModal(null, 'create')}
+                >
+                  <CardHeader className="p-2 flex items-center justify-center">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Plus size={14} />
+                      <span className="text-xs">Add workflow</span>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </motion.div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full max-w-3xl mx-auto px-4">
+      {/* Pre-built Workflows Section */}
+      {renderWorkflowSection(preBuiltWorkflows, "Pre-built Workflows", false)}
+      
+      {/* Custom Workflows Section */}
+      {renderWorkflowSection(customWorkflows, "Custom Workflows", true)}
 
       {/* Workflow Builder Modal */}
       {projectId && (
