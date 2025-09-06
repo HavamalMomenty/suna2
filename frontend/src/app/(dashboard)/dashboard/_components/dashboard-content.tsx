@@ -231,7 +231,7 @@ export function DashboardContent() {
   return (
     <>
       <ModalProviders />
-      <div className="flex flex-col h-screen w-full">
+      <div className="flex flex-col min-h-screen w-full">
         {isMobile && (
           <div className="absolute top-4 left-4 z-10">
             <Tooltip>
@@ -251,7 +251,8 @@ export function DashboardContent() {
           </div>
         )}
 
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-50 w-full">
+          <div className="w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
             <div className="flex items-center gap-1">
               <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
@@ -285,6 +286,7 @@ export function DashboardContent() {
           </div>
 
           <Examples onSelectPrompt={setInputValue} onSelectWorkflow={handleWorkflowExecution} />
+          </div>
         </div>
 
         <BillingErrorAlert

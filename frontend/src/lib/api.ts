@@ -141,6 +141,7 @@ export type Workflow = {
   created_by: string;
   master_prompt?: string; // Add master_prompt field
   default_workflow?: boolean; // Indicates if this is a default/pre-built workflow
+  image_url?: string; // URL or base64 data for workflow image
   definition: {
     name: string;
     description: string;
@@ -2027,6 +2028,7 @@ export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
       created_by: workflowData.created_by || '',
       master_prompt: workflowData.master_prompt, // Include master_prompt field
       default_workflow: workflowData.default_workflow || false, // Include default_workflow field
+      image_url: workflowData.image_url, // Include image_url field
       definition: {
         name: workflowData.name,
         description: workflowData.description || '',
@@ -2088,6 +2090,7 @@ export const viewWorkflow = async (workflowId: string, projectId?: string): Prom
       created_by: workflowData.created_by || '',
       master_prompt: workflowData.master_prompt,
       default_workflow: workflowData.default_workflow || false,
+      image_url: workflowData.image_url,
       definition: {
         name: workflowData.name,
         description: workflowData.description || '',
@@ -2152,6 +2155,7 @@ export const copyWorkflow = async (workflowId: string, projectId?: string): Prom
       created_by: workflowData.created_by || '',
       master_prompt: workflowData.master_prompt,
       default_workflow: workflowData.default_workflow || false,
+      image_url: workflowData.image_url,
       definition: {
         name: workflowData.name,
         description: workflowData.description || '',

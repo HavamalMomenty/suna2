@@ -39,6 +39,7 @@ export interface WorkflowBuilderData {
   master_prompt: string;
   login_template: string;
   files: WorkflowFile[];
+  image_url?: string;
 }
 
 export interface WorkflowBuilderRequest {

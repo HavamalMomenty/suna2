@@ -115,7 +115,7 @@ export default function DashboardLayoutContent({
 
   return (
     <DeleteOperationProvider>
-      <SidebarProvider>
+      <SidebarProvider style={{ minHeight: 'auto' }}>
         <SidebarLeft />
         <SidebarInset>
           {mantenanceBanner}

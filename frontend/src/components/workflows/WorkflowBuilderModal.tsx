@@ -11,6 +11,25 @@ import { Loader2, Trash2, AlertTriangle, Star } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/use-admin';
 import { toggleWorkflowDefaultStatus } from '@/lib/api';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+
+// Helper function to get signed URL for image display
+const getImageUrl = async (imagePath: string): Promise<string> => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, return it
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // Generate signed URL for private bucket
+  const supabase = createClient();
+  const { data: signedUrlData } = await supabase.storage
+    .from('workflow-images')
+    .createSignedUrl(imagePath, 60 * 60 * 24 * 7); // 7 days expiry
+  
+  return signedUrlData?.signedUrl || '';
+};
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -56,7 +75,9 @@ export function WorkflowBuilderModal({
   const [activeTab, setActiveTab] = useState('basic');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [displayImageUrl, setDisplayImageUrl] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const { createWorkflow, updateWorkflow } = useWorkflowBuilder();
   const deleteWorkflow = useDeleteWorkflow();
   
@@ -76,13 +97,42 @@ export function WorkflowBuilderModal({
     description: '',
     master_prompt: '',
     login_template: '',
-    files: []
+    files: [],
+    image_url: ''
   });
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
+
+  // Update display URL when image path changes
+  useEffect(() => {
+    const updateDisplayUrl = async () => {
+      if (formData.image_url) {
+        const url = await getImageUrl(formData.image_url);
+        setDisplayImageUrl(url);
+      } else {
+        setDisplayImageUrl('');
+      }
+    };
+    updateDisplayUrl();
+  }, [formData.image_url]);
 
   // Load existing data when available
   useEffect(() => {
     if (existingData && (mode === 'edit' || mode === 'view')) {
+      console.log('Loading existing data:', existingData);
       setFormData(existingData);
+      // Set the selected file name if there's an image
+      if (existingData.image_url) {
+        const fileName = existingData.image_url.split('/').pop() || 'Image';
+        setSelectedFileName(fileName);
+        console.log('Loading existing image:', existingData.image_url);
+        // Generate display URL for existing image
+        getImageUrl(existingData.image_url).then(url => {
+          console.log('Generated display URL:', url);
+          setDisplayImageUrl(url);
+        }).catch(error => {
+          console.error('Error loading existing image:', error);
+        });
+      }
     }
   }, [existingData, mode]);
 
@@ -93,14 +143,18 @@ export function WorkflowBuilderModal({
       setPendingFiles([]);
       setDeleteConfirmation('');
       setShowDeleteDialog(false);
+      setDisplayImageUrl('');
+      setIsUploadingImage(false);
       if (mode === 'create') {
         setFormData({
           title: '',
           description: '',
           master_prompt: '',
           login_template: '',
-          files: []
+          files: [],
+          image_url: ''
         });
+        setSelectedFileName('');
       }
     }
   }, [isOpen, mode]);
@@ -145,6 +199,81 @@ export function WorkflowBuilderModal({
     setFormData(prev => ({ ...prev, files }));
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSelectedFileName('');
+      return;
+    }
+
+    // Set file name
+    setSelectedFileName(file.name);
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpeg|png)$/)) {
+      toast.error('Please upload a JPEG or PNG image');
+      setSelectedFileName('');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      setSelectedFileName('');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      // Upload to Supabase Storage
+      const supabase = createClient();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `workflow-images/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('workflow-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Store the file path instead of signed URL for better reliability
+      setFormData(prev => ({ ...prev, image_url: filePath }));
+      console.log('Image uploaded, stored path:', filePath);
+      toast.success('Image uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+      setSelectedFileName('');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    // If there's an existing image URL, try to delete it from storage
+    if (formData.image_url && formData.image_url.includes('workflow-images/')) {
+      try {
+        const supabase = createClient();
+        const fileName = formData.image_url.split('workflow-images/')[1];
+        await supabase.storage
+          .from('workflow-images')
+          .remove([`workflow-images/${fileName}`]);
+      } catch (error) {
+        console.error('Error deleting image from storage:', error);
+        // Continue anyway - the main goal is to clear the form
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, image_url: '' }));
+    setSelectedFileName('');
+  };
+
   const handleToggleDefaultStatus = async () => {
     if (!workflowId) return;
     
@@ -171,8 +300,8 @@ export function WorkflowBuilderModal({
                 workflow.project_id === projectId
   );
 
-  const isLoading = createWorkflow.isPending || updateWorkflow.isPending;
-  const canSave = formData.title.trim() && formData.master_prompt.trim() && !isDuplicateName;
+  const isLoading = createWorkflow.isPending || updateWorkflow.isPending || isUploadingImage;
+  const canSave = formData.title.trim() && formData.master_prompt.trim() && !isDuplicateName && !isUploadingImage;
   const canDelete = deleteConfirmation.trim() === formData.title.trim();
 
   if (loadingData && (mode === 'edit' || mode === 'view')) {
@@ -236,6 +365,55 @@ export function WorkflowBuilderModal({
                   placeholder="Describe what this workflow does..."
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="workflow-image">Workflow Image</Label>
+                <p className="text-xs text-muted-foreground">
+                  Upload a JPEG or PNG image to customize your workflow card appearance
+                </p>
+                <div className="flex items-center gap-4 py-3">
+                  <div className="relative flex-1">
+                    <div className="relative">
+                      <Input
+                        id="workflow-image"
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={handleImageUpload}
+                        disabled={mode === 'view'}
+                        className="h-12 cursor-pointer opacity-0 absolute inset-0 z-10"
+                      />
+                      <div className="h-12 border border-input bg-background rounded-md flex items-center px-3 hover:bg-accent hover:text-accent-foreground transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 px-4 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium">
+                            Choose File
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedFileName || 'No file chosen'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {displayImageUrl && (
+                    <div className="relative">
+                      <img 
+                        src={displayImageUrl} 
+                        alt="Workflow preview" 
+                        className="w-16 h-16 object-cover rounded-lg border"
+                      />
+                      {mode !== 'view' && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Admin-only promote to default option */}

@@ -26,6 +26,56 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { useFeatureFlag } from "@/lib/feature-flags";
 import { WorkflowBuilderModal } from "@/components/workflows/WorkflowBuilderModal";
 import { useIsAdmin } from '@/hooks/use-admin';
+import { createClient } from '@/lib/supabase/client';
+
+// Helper function to get signed URL for image display
+const getImageUrl = async (imagePath: string): Promise<string> => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, return it
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // Generate signed URL for private bucket
+  const supabase = createClient();
+  const { data: signedUrlData } = await supabase.storage
+    .from('workflow-images')
+    .createSignedUrl(imagePath, 60 * 60 * 24 * 7); // 7 days expiry
+  
+  return signedUrlData?.signedUrl || '';
+};
+
+// Component to handle image display with signed URLs
+const WorkflowImage = ({ imagePath, alt, className }: { imagePath: string; alt: string; className: string }) => {
+  const [imageUrl, setImageUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      if (imagePath) {
+        setLoading(true);
+        const url = await getImageUrl(imagePath);
+        setImageUrl(url);
+        setLoading(false);
+      } else {
+        setImageUrl('');
+        setLoading(false);
+      }
+    };
+    loadImage();
+  }, [imagePath]);
+
+  if (loading) {
+    return <div className={`${className} bg-muted animate-pulse`} />;
+  }
+
+  if (!imageUrl) {
+    return null;
+  }
+
+  return <img src={imageUrl} alt={alt} className={className} />;
+};
 
 export default function WorkflowsPage() {
   const { enabled: workflowsEnabled, loading: flagLoading } = useFeatureFlag("workflows");
@@ -125,6 +175,7 @@ export default function WorkflowsPage() {
       fetchWorkflows();
     }
   }, [projectId]);
+
 
   const handleRunWorkflow = async (workflowId: string) => {
     if (!projectId) {
@@ -419,168 +470,79 @@ export default function WorkflowsPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {workflows.map((workflow, index) => (
               <div 
                 key={workflow.id}
-                className="bg-neutral-100 dark:bg-sidebar border border-border rounded-2xl overflow-hidden hover:bg-muted/50 transition-all duration-200 group"
+                className="bg-neutral-100 dark:bg-sidebar border border-border rounded-lg overflow-hidden hover:bg-muted/50 transition-all duration-200 group h-34 relative cursor-pointer"
+                onClick={() => handleWorkflowClick(workflow)}
               >
-                <div 
-                  className="h-24 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100"
-                  style={{ backgroundColor: getWorkflowColor(workflow.status) }}
-                >
-                  <div className="text-3xl text-white drop-shadow-sm">
-                    {executingWorkflows.has(workflow.id) ? (
-                      <Loader2 className="animate-spin rounded-full h-12 w-12" />
-                    ) : (
-                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                        <div className="w-8 h-8 bg-white/40 rounded"></div>
-                      </div>
-                    )}
+                {/* Background Image or Color */}
+                {workflow.image_url ? (
+                  <div className="absolute inset-0">
+                    <WorkflowImage 
+                      imagePath={workflow.image_url}
+                      alt={workflow.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Dark overlay for better text readability */}
+                    <div className="absolute inset-0 bg-black/20" />
                   </div>
+                ) : (
+                  <div 
+                    className="absolute inset-0 bg-gradient-to-br from-opacity-90 to-opacity-100"
+                    style={{ backgroundColor: getWorkflowColor(workflow.status) }}
+                  />
+                )}
 
-                  <div className="absolute top-3 right-3">
-                    {getStatusIcon(workflow.status)}
-                  </div>
-                  <div className="absolute top-3 left-3">
-                    <Button 
-                      variant="ghost" 
+                {/* Title overlay - positioned in top 1/3 */}
+                <div className="absolute top-0 left-0 right-0 h-11 bg-background/70 backdrop-blur-sm flex items-center justify-center p-2 -mx-0.5">
+                  <h3 className="font-medium text-foreground text-sm leading-tight line-clamp-2 text-center">
+                    {workflow.name}
+                  </h3>
+                </div>
+
+                {/* Status and Run button overlays */}
+                <div className="absolute top-3 right-3">
+                  {getStatusIcon(workflow.status)}
+                </div>
+                <div className="absolute top-3 left-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                    onClick={() => handleRunWorkflow(workflow.id)}
+                  >
+                    {executingWorkflows.has(workflow.id) ? (
+                      <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+                {/* Action buttons positioned at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-background/90 backdrop-blur-sm">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
                       size="sm"
-                      className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
-                      disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
                       onClick={() => handleRunWorkflow(workflow.id)}
+                      disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                      className="flex-1"
                     >
                       {executingWorkflows.has(workflow.id) ? (
                         <Loader2 className="animate-spin rounded-full h-3 w-3" />
                       ) : (
                         <Play className="h-3 w-3" />
                       )}
+                      {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
                     </Button>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        {editingWorkflowId === workflow.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                              className="text-lg font-semibold h-8"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleSaveEditName(workflow.id);
-                                } else if (e.key === 'Escape') {
-                                  handleCancelEditName();
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => handleSaveEditName(workflow.id)}
-                                disabled={updatingWorkflows.has(workflow.id)}
-                              >
-                                {updatingWorkflows.has(workflow.id) ? (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-green-600" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={handleCancelEditName}
-                                disabled={updatingWorkflows.has(workflow.id)}
-                              >
-                                <X className="h-3 w-3 text-red-600" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <h3 
-                            className="text-foreground font-medium text-lg line-clamp-1 cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => handleStartEditName(workflow)}
-                          >
-                            {workflow.definition.name || workflow.name}
-                          </h3>
-                        )}
-                      </div>
-                      {getStatusBadge(workflow.status)}
-                    </div>
-                    <p className="text-muted-foreground text-sm line-clamp-2 min-h-[2.5rem]">
-                      {workflow.definition.description || workflow.description || 'No description provided'}
-                    </p>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleRunWorkflow(workflow.id)}
-                        disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
-                        className="flex-1"
-                      >
-                        {executingWorkflows.has(workflow.id) ? (
-                          <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                        ) : (
-                          <Play className="h-3 w-3" />
-                        )}
-                        {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
-                      </Button>
-                      
-                      {/* For default workflows: Different buttons for admins vs non-admins */}
-                      {workflow.default_workflow ? (
-                        isAdmin ? (
-                          /* Admin: Configure and Copy buttons */
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
-                              className="flex-1"
-                            >
-                              <Settings className="h-3 w-3" />
-                              Configure
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCopyWorkflow(workflow)}
-                              className="flex-1"
-                            >
-                              <Copy className="h-3 w-3" />
-                              Copy
-                            </Button>
-                          </>
-                        ) : (
-                          /* Non-admin: View and Copy buttons */
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewWorkflow(workflow)}
-                              className="flex-1"
-                            >
-                              <Eye className="h-3 w-3" />
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCopyWorkflow(workflow)}
-                              className="flex-1"
-                            >
-                              <Copy className="h-3 w-3" />
-                              Copy
-                            </Button>
-                          </>
-                        )
-                      ) : (
-                        /* For custom workflows: Configure and Toggle buttons */
+
+                    {/* For default workflows: Different buttons for admins vs non-admins */}
+                    {workflow.default_workflow ? (
+                      isAdmin ? (
+                        /* Admin: Configure and Copy buttons */
                         <>
                           <Button
                             variant="outline"
@@ -592,62 +554,106 @@ export default function WorkflowsPage() {
                             Configure
                           </Button>
                           <Button
-                            variant={workflow.status === 'active' ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
-                            disabled={togglingWorkflows.has(workflow.id)}
-                            className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
+                            onClick={() => handleCopyWorkflow(workflow)}
+                            className="flex-1"
                           >
-                            {togglingWorkflows.has(workflow.id) ? (
-                              <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                            ) : workflow.status === 'active' ? (
-                              <PowerOff className="h-3 w-3" />
-                            ) : (
-                              <Power className="h-3 w-3" />
-                            )}
-                            {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
+                            <Copy className="h-3 w-3" />
+                            Copy
                           </Button>
                         </>
-                      )}
-                      
-                      {/* Delete button - only show for custom workflows */}
-                      {!workflow.default_workflow && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                              disabled={deletingWorkflows.has(workflow.id)}
-                            >
-                              {deletingWorkflows.has(workflow.id) ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
-                              ) : (
-                                <Trash2 className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{workflow.definition.name || workflow.name}"? 
-                              This action cannot be undone and will permanently remove the workflow and all its data.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteWorkflow(workflow.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Workflow
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      )}
-                    </div>
+                      ) : (
+                        /* Non-admin: View and Copy buttons */
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewWorkflow(workflow)}
+                            className="flex-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopyWorkflow(workflow)}
+                            className="flex-1"
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy
+                          </Button>
+                        </>
+                      )
+                    ) : (
+                      /* For custom workflows: Configure and Toggle buttons */
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
+                          className="flex-1"
+                        >
+                          <Settings className="h-3 w-3" />
+                          Configure
+                        </Button>
+                        <Button
+                          variant={workflow.status === 'active' ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
+                          disabled={togglingWorkflows.has(workflow.id)}
+                          className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {togglingWorkflows.has(workflow.id) ? (
+                            <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                          ) : workflow.status === 'active' ? (
+                            <PowerOff className="h-3 w-3" />
+                          ) : (
+                            <Power className="h-3 w-3" />
+                          )}
+                          {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Delete button - only show for custom workflows */}
+                    {!workflow.default_workflow && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={deletingWorkflows.has(workflow.id)}
+                          >
+                            {deletingWorkflows.has(workflow.id) ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{workflow.definition.name || workflow.name}"? 
+                            This action cannot be undone and will permanently remove the workflow and all its data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteWorkflow(workflow.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Workflow
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    )}
                   </div>
                 </div>
               </div>
@@ -669,6 +675,7 @@ export default function WorkflowsPage() {
     setBuilderWorkflowId(null);
     setBuilderMode('create');
   };
+
 
   const fetchWorkflows = async () => {
     try {
@@ -779,21 +786,32 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold">Workflows</h1>
-          <p className="text-muted-foreground">
-            Create and manage automated agent workflows
-          </p>
-        </div>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      {/* DEBUG: Test element at the very top */}
+      <div style={{ height: '200px', backgroundColor: 'red', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+        DEBUG: This should be visible at the top
       </div>
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Workflows</h1>
+            <p className="text-md text-muted-foreground max-w-2xl">
+              Create and manage automated agent workflows
+            </p>
+          </div>
+        </div>
 
-      {/* Pre-built Workflows Section */}
-      {renderWorkflowCards(preBuiltWorkflows, "Pre-built Workflows", false)}
+          {/* Pre-built Workflows Section */}
+          {renderWorkflowCards(preBuiltWorkflows, "Pre-built Workflows", false)}
 
-      {/* Custom Workflows Section */}
-      {renderWorkflowCards(customWorkflows, "Custom Workflows", true)}
+          {/* Custom Workflows Section */}
+          {renderWorkflowCards(customWorkflows, "Custom Workflows", true)}
+          
+          {/* DEBUG: Test element to verify height growth */}
+          <div style={{ height: '500px', backgroundColor: 'red', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+            DEBUG: This should make the page 500px taller
+          </div>
+      </div>
 
       {projectId && (
         <WorkflowBuilderModal 

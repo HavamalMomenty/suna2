@@ -129,6 +129,7 @@ class WorkflowBuilderService:
                 "created_by": user_id,
                 "master_prompt": workflow_data.master_prompt,
                 "login_template": workflow_data.login_template,
+                "image_url": workflow_data.image_url,
                 "definition": {
                     "type": "builder_workflow",
                     "version": "1.0",
@@ -180,6 +181,7 @@ class WorkflowBuilderService:
                 "description": workflow_data.description,
                 "master_prompt": workflow_data.master_prompt,
                 "login_template": workflow_data.login_template,
+                "image_url": workflow_data.image_url,
                 "updated_at": datetime.utcnow().isoformat()
             }).eq("id", workflow_id).execute()
             

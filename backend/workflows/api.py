@@ -208,7 +208,8 @@ def _map_db_to_workflow_definition(data: dict) -> WorkflowDefinition:
         max_retries=definition.get('max_retries', 3),
         master_prompt=data.get('master_prompt'),
         login_template=data.get('login_template'),
-        default_workflow=data.get('default_workflow', False)
+        default_workflow=data.get('default_workflow', False),
+        image_url=data.get('image_url')
     )
 
 @router.get("/workflows", response_model=List[WorkflowDefinition])
@@ -342,6 +343,7 @@ async def copy_workflow(
             "created_by": user_id,
             "master_prompt": source_workflow.get('master_prompt'),
             "login_template": source_workflow.get('login_template'),
+            "image_url": source_workflow.get('image_url'),  # Copy the image URL
             "default_workflow": False,  # Always create as custom workflow
             "definition": source_workflow.get('definition', {}),
             "status": "draft"  # Start as draft
@@ -352,8 +354,33 @@ async def copy_workflow(
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to copy workflow")
         
+        copied_workflow = result.data[0]
+        copied_workflow_id = copied_workflow['id']
+        
+        # Copy workflow files if they exist
+        try:
+            files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
+            if files_result.data:
+                # Copy each file to the new workflow
+                for file_data in files_result.data:
+                    # Create new file record for the copied workflow
+                    new_file_data = {
+                        'workflow_id': copied_workflow_id,
+                        'filename': file_data['filename'],
+                        'file_path': file_data['file_path'],  # Same file path in storage
+                        'file_size': file_data['file_size'],
+                        'file_type': file_data['file_type'],
+                        'mime_type': file_data['mime_type'],
+                        'created_by': user_id
+                    }
+                    await client.table('workflow_files').insert(new_file_data).execute()
+                logger.info(f"Copied {len(files_result.data)} files to workflow {copied_workflow_id}")
+        except Exception as e:
+            logger.warning(f"Failed to copy workflow files: {e}")
+            # Continue anyway - the workflow copy succeeded
+        
         logger.info(f"Workflow {workflow_id} copied by user {user_id} as {copied_name}")
-        return _map_db_to_workflow_definition(result.data[0])
+        return _map_db_to_workflow_definition(copied_workflow)
         
     except HTTPException:
         raise

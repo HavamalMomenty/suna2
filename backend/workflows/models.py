@@ -80,6 +80,7 @@ class WorkflowDefinition(BaseModel):
     master_prompt: Optional[str] = None  # Added for workflow builder
     login_template: Optional[str] = None  # Added for workflow builder
     default_workflow: bool = False  # Indicates if this is a default/pre-built workflow
+    image_url: Optional[str] = None  # URL or base64 data for workflow image
 
     nodes: Optional[List['WorkflowNode']] = None
     edges: Optional[List['WorkflowEdge']] = None
@@ -171,6 +172,7 @@ class WorkflowBuilderData(BaseModel):
     master_prompt: Optional[str] = None
     login_template: Optional[str] = None
     files: List[WorkflowFile] = []
+    image_url: Optional[str] = None
 
 class WorkflowBuilderRequest(BaseModel):
     """Request model for creating a workflow from builder."""

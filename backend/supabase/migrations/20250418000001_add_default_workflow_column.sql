@@ -4,11 +4,20 @@
 
 BEGIN;
 
--- Add the default_workflow column
-ALTER TABLE workflows ADD COLUMN default_workflow BOOLEAN DEFAULT FALSE NOT NULL;
+-- Add the default_workflow column only if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'workflows' 
+        AND column_name = 'default_workflow'
+    ) THEN
+        ALTER TABLE workflows ADD COLUMN default_workflow BOOLEAN DEFAULT FALSE NOT NULL;
+    END IF;
+END $$;
 
 -- Create index for performance when filtering default workflows
-CREATE INDEX idx_workflows_default_workflow ON workflows(default_workflow);
+CREATE INDEX IF NOT EXISTS idx_workflows_default_workflow ON workflows(default_workflow);
 
 -- Update existing workflows that have "(Default)" in their name
 -- Set default_workflow = true and remove the "(Default)" suffix from name
@@ -26,6 +35,7 @@ DROP POLICY IF EXISTS "Users can view workflows in their accounts" ON workflows;
 DROP POLICY IF EXISTS "Users can update workflows in their accounts" ON workflows;
 
 -- Create updated policies that include default workflows
+DROP POLICY IF EXISTS "Users can view workflows in their accounts or default workflows" ON workflows;
 CREATE POLICY "Users can view workflows in their accounts or default workflows" ON workflows
     FOR SELECT USING (
         basejump.has_role_on_account(account_id) = true OR
@@ -37,6 +47,7 @@ CREATE POLICY "Users can view workflows in their accounts or default workflows" 
         )
     );
 
+DROP POLICY IF EXISTS "Users can update workflows in their accounts or default workflows" ON workflows;
 CREATE POLICY "Users can update workflows in their accounts or default workflows" ON workflows
     FOR UPDATE USING (
         basejump.has_role_on_account(account_id) = true OR
