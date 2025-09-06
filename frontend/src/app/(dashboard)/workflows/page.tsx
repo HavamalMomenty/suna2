@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Power, PowerOff, Loader2, Settings, Play } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Check, X, Power, PowerOff, Loader2, Settings, Play, Eye, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getWorkflows, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, executeWorkflowWithBuilderData, type Workflow } from "@/lib/api";
+import { getWorkflows, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, executeWorkflowWithBuilderData, viewWorkflow, copyWorkflow, type Workflow } from "@/lib/api";
 import { useUpdateWorkflowStatus } from "@/hooks/react-query/workflows/use-workflows";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useFeatureFlag } from "@/lib/feature-flags";
 import { WorkflowBuilderModal } from "@/components/workflows/WorkflowBuilderModal";
+import { useIsAdmin } from '@/hooks/use-admin';
 
 export default function WorkflowsPage() {
   const { enabled: workflowsEnabled, loading: flagLoading } = useFeatureFlag("workflows");
@@ -52,10 +53,13 @@ export default function WorkflowsPage() {
   // Workflow Builder Modal State
   const [builderModalOpen, setBuilderModalOpen] = useState(false);
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
-  const [builderMode, setBuilderMode] = useState<'create' | 'edit'>('create');
+  const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
 
   const { state, setOpen, setOpenMobile } = useSidebar();
   const updateWorkflowStatusMutation = useUpdateWorkflowStatus();
+  
+  // Check if current user is admin
+  const { data: isAdmin = false } = useIsAdmin();
 
 
 
@@ -155,6 +159,29 @@ export default function WorkflowsPage() {
         newSet.delete(workflowId);
         return newSet;
       });
+    }
+  };
+
+  const handleViewWorkflow = async (workflow: Workflow) => {
+    try {
+      // Open the workflow in view mode
+      handleOpenBuilderModal(workflow.id, 'view');
+      toast.success('Opening workflow in view mode');
+    } catch (error) {
+      console.error('Error viewing workflow:', error);
+      toast.error('Failed to view workflow');
+    }
+  };
+
+  const handleCopyWorkflow = async (workflow: Workflow) => {
+    try {
+      const copiedWorkflow = await copyWorkflow(workflow.id, projectId);
+      toast.success(`Workflow copied as "${copiedWorkflow.name}"`);
+      // Refresh the workflows list
+      fetchWorkflows();
+    } catch (error) {
+      console.error('Error copying workflow:', error);
+      toast.error('Failed to copy workflow');
     }
   };
 
@@ -504,46 +531,102 @@ export default function WorkflowsPage() {
                         )}
                         {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
-                        className="flex-1"
-                      >
-                        <Settings className="h-3 w-3" />
-                        Configure
-                      </Button>
-                      <Button
-                        variant={workflow.status === 'active' ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
-                        disabled={togglingWorkflows.has(workflow.id)}
-                        className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
-                      >
-                        {togglingWorkflows.has(workflow.id) ? (
-                          <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                        ) : workflow.status === 'active' ? (
-                          <PowerOff className="h-3 w-3" />
+                      
+                      {/* For default workflows: Different buttons for admins vs non-admins */}
+                      {workflow.default_workflow ? (
+                        isAdmin ? (
+                          /* Admin: Configure and Copy buttons */
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
+                              className="flex-1"
+                            >
+                              <Settings className="h-3 w-3" />
+                              Configure
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopyWorkflow(workflow)}
+                              className="flex-1"
+                            >
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </Button>
+                          </>
                         ) : (
-                          <Power className="h-3 w-3" />
-                        )}
-                        {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
+                          /* Non-admin: View and Copy buttons */
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewWorkflow(workflow)}
+                              className="flex-1"
+                            >
+                              <Eye className="h-3 w-3" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopyWorkflow(workflow)}
+                              className="flex-1"
+                            >
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </Button>
+                          </>
+                        )
+                      ) : (
+                        /* For custom workflows: Configure and Toggle buttons */
+                        <>
+                          <Button
+                            variant="outline"
                             size="sm"
-                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={deletingWorkflows.has(workflow.id)}
+                            onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
+                            className="flex-1"
                           >
-                            {deletingWorkflows.has(workflow.id) ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
-                            ) : (
-                              <Trash2 className="h-3 w-3" />
-                            )}
+                            <Settings className="h-3 w-3" />
+                            Configure
                           </Button>
-                        </AlertDialogTrigger>
+                          <Button
+                            variant={workflow.status === 'active' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
+                            disabled={togglingWorkflows.has(workflow.id)}
+                            className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
+                          >
+                            {togglingWorkflows.has(workflow.id) ? (
+                              <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                            ) : workflow.status === 'active' ? (
+                              <PowerOff className="h-3 w-3" />
+                            ) : (
+                              <Power className="h-3 w-3" />
+                            )}
+                            {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </>
+                      )}
+                      
+                      {/* Delete button - only show for custom workflows */}
+                      {!workflow.default_workflow && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                              disabled={deletingWorkflows.has(workflow.id)}
+                            >
+                              {deletingWorkflows.has(workflow.id) ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
@@ -563,6 +646,7 @@ export default function WorkflowsPage() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -574,7 +658,7 @@ export default function WorkflowsPage() {
     );
   };
 
-  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
+  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit' | 'view') => {
     setBuilderModalOpen(true);
     setBuilderWorkflowId(workflowId);
     setBuilderMode(mode);

@@ -41,7 +41,7 @@ interface WorkflowBuilderModalProps {
   onClose: () => void;
   onWorkflowSaved?: () => void;
   workflowId?: string;
-  mode: 'create' | 'edit';
+  mode: 'create' | 'edit' | 'view';
   projectId: string;
 }
 
@@ -60,9 +60,9 @@ export function WorkflowBuilderModal({
   const { createWorkflow, updateWorkflow } = useWorkflowBuilder();
   const deleteWorkflow = useDeleteWorkflow();
   
-  // Load existing data for edit mode
+  // Load existing data for edit and view modes
   const { data: existingData, isLoading: loadingData } = useWorkflowBuilderData(
-    mode === 'edit' ? workflowId : undefined
+    (mode === 'edit' || mode === 'view') ? workflowId : undefined
   );
   
   // Load all workflows for name validation
@@ -81,7 +81,7 @@ export function WorkflowBuilderModal({
 
   // Load existing data when available
   useEffect(() => {
-    if (existingData && mode === 'edit') {
+    if (existingData && (mode === 'edit' || mode === 'view')) {
       setFormData(existingData);
     }
   }, [existingData, mode]);
@@ -175,7 +175,7 @@ export function WorkflowBuilderModal({
   const canSave = formData.title.trim() && formData.master_prompt.trim() && !isDuplicateName;
   const canDelete = deleteConfirmation.trim() === formData.title.trim();
 
-  if (loadingData && mode === 'edit') {
+  if (loadingData && (mode === 'edit' || mode === 'view')) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl">
@@ -194,7 +194,7 @@ export function WorkflowBuilderModal({
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create' ? 'Create New Workflow' : 'Edit Workflow'}
+              {mode === 'create' ? 'Create New Workflow' : mode === 'edit' ? 'Edit Workflow' : 'View Workflow'}
             </DialogTitle>
           </DialogHeader>
           
@@ -214,6 +214,7 @@ export function WorkflowBuilderModal({
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  readOnly={mode === 'view'}
                   placeholder="Enter workflow title..."
                   maxLength={255}
                   className={isDuplicateName ? 'border-red-500 focus:border-red-500' : ''}
@@ -231,6 +232,7 @@ export function WorkflowBuilderModal({
                   id="description"
                   value={formData.description || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  readOnly={mode === 'view'}
                   placeholder="Describe what this workflow does..."
                   rows={3}
                 />
@@ -273,6 +275,7 @@ export function WorkflowBuilderModal({
                   id="master_prompt"
                   value={formData.master_prompt}
                   onChange={(e) => setFormData(prev => ({ ...prev, master_prompt: e.target.value }))}
+                  readOnly={mode === 'view'}
                   placeholder="Enter your workflow prompt in markdown..."
                   rows={15}
                   className="font-mono text-sm"
@@ -311,17 +314,25 @@ export function WorkflowBuilderModal({
             
             {/* Right side buttons */}
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={onClose} disabled={isLoading}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSave} 
-                disabled={!canSave || isLoading}
-                title={isDuplicateName ? 'Please choose a different workflow name' : (!formData.title.trim() ? 'Title is required' : (!formData.master_prompt.trim() ? 'Master prompt is required' : ''))}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === 'create' ? 'Create Workflow' : 'Save Changes'}
-              </Button>
+              {mode === 'view' ? (
+                <Button onClick={onClose}>
+                  Close
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={!canSave || isLoading}
+                    title={isDuplicateName ? 'Please choose a different workflow name' : (!formData.title.trim() ? 'Title is required' : (!formData.master_prompt.trim() ? 'Master prompt is required' : ''))}
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {mode === 'create' ? 'Create Workflow' : 'Save Changes'}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </DialogContent>

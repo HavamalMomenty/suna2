@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, RefreshCw, Star } from 'lucide-react';
+import { Plus, Settings, RefreshCw, Eye, Copy } from 'lucide-react';
 import { WorkflowBuilderModal } from './WorkflowBuilderModal';
 import { useQuery } from '@tanstack/react-query';
-import { getWorkflows, type Workflow } from '@/lib/api';
+import { getWorkflows, viewWorkflow, copyWorkflow, type Workflow } from '@/lib/api';
 import { toast } from 'sonner';
+import { useIsAdmin } from '@/hooks/use-admin';
 
 interface WorkflowCardsProps {
   onSelectWorkflow?: (workflow: Workflow) => void;
@@ -18,7 +19,7 @@ interface WorkflowCardsProps {
 export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProps) => {
   const [builderModalOpen, setBuilderModalOpen] = useState(false);
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
-  const [builderMode, setBuilderMode] = useState<'create' | 'edit'>('create');
+  const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
 
   // Fetch workflows
   const { data: workflows = [], isLoading, refetch } = useQuery({
@@ -27,9 +28,12 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
     enabled: !!projectId,
   });
 
+  // Check if current user is admin
+  const { data: isAdmin = false } = useIsAdmin();
 
 
-  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit') => {
+
+  const handleOpenBuilderModal = (workflowId: string | null, mode: 'create' | 'edit' | 'view') => {
     setBuilderModalOpen(true);
     setBuilderWorkflowId(workflowId);
     setBuilderMode(mode);
@@ -51,6 +55,31 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
   const handleWorkflowClick = (workflow: any) => {
     if (onSelectWorkflow) {
       onSelectWorkflow(workflow);
+    }
+  };
+
+  const handleViewWorkflow = async (workflow: Workflow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Open the workflow in view mode
+      handleOpenBuilderModal(workflow.id, 'view');
+      toast.success('Opening workflow in view mode');
+    } catch (error) {
+      console.error('Error viewing workflow:', error);
+      toast.error('Failed to view workflow');
+    }
+  };
+
+  const handleCopyWorkflow = async (workflow: Workflow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const copiedWorkflow = await copyWorkflow(workflow.id, projectId);
+      toast.success(`Workflow copied as "${copiedWorkflow.name}"`);
+      // Refresh the workflows list
+      refetch();
+    } catch (error) {
+      console.error('Error copying workflow:', error);
+      toast.error('Failed to copy workflow');
     }
   };
 
@@ -143,42 +172,79 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
                     onClick={() => handleWorkflowClick(workflow)}
                   >
                     <div className="flex items-start justify-center gap-1.5">
-                      {workflow.default_workflow && (
-                        <div className="flex-shrink-0 mt-0.5">
-                          <Star size={14} className="text-blue-600 dark:text-blue-400" />
-                        </div>
-                      )}
                       <CardTitle className="font-normal group-hover:text-foreground transition-all text-muted-foreground text-xs leading-relaxed line-clamp-3">
                         {workflow.name}
                       </CardTitle>
                     </div>
-                    
-                    {/* Default workflow indicator */}
-                    {workflow.default_workflow && (
-                      <div className="flex justify-center mt-1">
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded">
-                          Default
-                        </span>
-                      </div>
-                    )}
                   </CardHeader>
                   
                   {/* Action buttons */}
                   <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {/* Edit button - show for all workflows */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Edit all workflows directly (including default workflows)
-                        handleOpenBuilderModal(workflow.id, 'edit');
-                      }}
-                      title="Edit workflow"
-                    >
-                      <Settings size={12} />
-                    </Button>
+                    {/* For default workflows: Different buttons for admins vs non-admins */}
+                    {workflow.default_workflow ? (
+                      isAdmin ? (
+                        /* Admin: Edit and Copy buttons */
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenBuilderModal(workflow.id, 'edit');
+                            }}
+                            title="Edit workflow"
+                          >
+                            <Settings size={12} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => handleCopyWorkflow(workflow, e)}
+                            title="Copy workflow"
+                          >
+                            <Copy size={12} />
+                          </Button>
+                        </>
+                      ) : (
+                        /* Non-admin: View and Copy buttons */
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => handleViewWorkflow(workflow, e)}
+                            title="View workflow (read-only)"
+                          >
+                            <Eye size={12} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => handleCopyWorkflow(workflow, e)}
+                            title="Copy workflow"
+                          >
+                            <Copy size={12} />
+                          </Button>
+                        </>
+                      )
+                    ) : (
+                      /* For custom workflows: Edit button */
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenBuilderModal(workflow.id, 'edit');
+                        }}
+                        title="Edit workflow"
+                      >
+                        <Settings size={12} />
+                      </Button>
+                    )}
                   </div>
                 </Card>
               </motion.div>

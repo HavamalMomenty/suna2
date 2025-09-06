@@ -483,11 +483,24 @@ class WorkflowBuilderService:
     
     async def _verify_workflow_access(self, workflow_id: str, user_id: str) -> None:
         """Verify user has access to workflow."""
-        result = self.supabase.table("workflows").select("id").eq(
+        # Check if user is the creator OR if it's a default workflow OR if user is admin
+        result = self.supabase.table("workflows").select("id, created_by, default_workflow").eq(
             "id", workflow_id
-        ).eq("created_by", user_id).execute()
+        ).execute()
         
         if not result.data:
+            raise PermissionError("Workflow not found")
+        
+        workflow = result.data[0]
+        is_owner = workflow['created_by'] == user_id
+        is_default = workflow.get('default_workflow', False)
+        
+        # Check if user is admin
+        from config.admin_users import is_admin_user
+        is_admin = is_admin_user(user_id)
+        
+        # Allow access if user is owner OR if it's a default workflow OR if user is admin
+        if not is_owner and not is_default and not is_admin:
             raise PermissionError("Access denied to workflow")
     
     async def _get_workflow_files(self, workflow_id: str) -> List[WorkflowFile]:

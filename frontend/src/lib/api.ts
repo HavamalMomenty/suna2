@@ -2024,6 +2024,7 @@ export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
       status: workflowData.state?.toLowerCase() || 'draft',
       project_id: workflowData.project_id,
       account_id: workflowData.created_by || '',
+      created_by: workflowData.created_by || '',
       master_prompt: workflowData.master_prompt, // Include master_prompt field
       default_workflow: workflowData.default_workflow || false, // Include default_workflow field
       definition: {
@@ -2041,6 +2042,131 @@ export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
   } catch (error) {
     console.error('Failed to get workflows:', error);
     handleApiError(error, { operation: 'load workflows', resource: 'workflows' });
+    throw error;
+  }
+};
+
+// View a workflow (read-only access)
+export const viewWorkflow = async (workflowId: string, projectId?: string): Promise<Workflow> => {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new NoAccessTokenAvailableError();
+    }
+
+    let url = `${API_URL}/workflows/${workflowId}/view`;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${session.access_token}`,
+    };
+
+    if (projectId) {
+      headers['X-Project-Id'] = projectId;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No error details available');
+      console.error(`Error viewing workflow: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Error viewing workflow: ${response.statusText} (${response.status})`);
+    }
+
+    const workflowData = await response.json();
+    
+    // Convert backend workflow format to frontend format
+    const workflow: Workflow = {
+      id: workflowData.id,
+      name: workflowData.name,
+      description: workflowData.description || '',
+      status: workflowData.state?.toLowerCase() || 'draft',
+      project_id: workflowData.project_id,
+      account_id: workflowData.created_by || '',
+      created_by: workflowData.created_by || '',
+      master_prompt: workflowData.master_prompt,
+      default_workflow: workflowData.default_workflow || false,
+      definition: {
+        name: workflowData.name,
+        description: workflowData.description || '',
+        nodes: workflowData.nodes || [],
+        edges: workflowData.edges || [],
+        variables: workflowData.variables || {}
+      },
+      created_at: workflowData.created_at,
+      updated_at: workflowData.updated_at
+    };
+
+    return workflow;
+  } catch (error) {
+    console.error('Failed to view workflow:', error);
+    handleApiError(error, { operation: 'view workflow', resource: 'workflows' });
+    throw error;
+  }
+};
+
+// Copy a workflow
+export const copyWorkflow = async (workflowId: string, projectId?: string): Promise<Workflow> => {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new NoAccessTokenAvailableError();
+    }
+
+    let url = `${API_URL}/workflows/${workflowId}/copy`;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${session.access_token}`,
+    };
+
+    if (projectId) {
+      headers['X-Project-Id'] = projectId;
+    }
+
+    const response = await fetch(url, { 
+      method: 'POST',
+      headers 
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No error details available');
+      console.error(`Error copying workflow: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Error copying workflow: ${response.statusText} (${response.status})`);
+    }
+
+    const workflowData = await response.json();
+    
+    // Convert backend workflow format to frontend format
+    const workflow: Workflow = {
+      id: workflowData.id,
+      name: workflowData.name,
+      description: workflowData.description || '',
+      status: workflowData.state?.toLowerCase() || 'draft',
+      project_id: workflowData.project_id,
+      account_id: workflowData.created_by || '',
+      created_by: workflowData.created_by || '',
+      master_prompt: workflowData.master_prompt,
+      default_workflow: workflowData.default_workflow || false,
+      definition: {
+        name: workflowData.name,
+        description: workflowData.description || '',
+        nodes: workflowData.nodes || [],
+        edges: workflowData.edges || [],
+        variables: workflowData.variables || {}
+      },
+      created_at: workflowData.created_at,
+      updated_at: workflowData.updated_at
+    };
+
+    return workflow;
+  } catch (error) {
+    console.error('Failed to copy workflow:', error);
+    handleApiError(error, { operation: 'copy workflow', resource: 'workflows' });
     throw error;
   }
 };
@@ -2318,40 +2444,6 @@ export const deleteWorkflow = async (workflowId: string): Promise<void> => {
   }
 };
 
-export const copyWorkflow = async (workflowId: string, projectId: string, newName?: string): Promise<Workflow> => {
-  try {
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      throw new NoAccessTokenAvailableError();
-    }
-
-    const response = await fetch(`${API_URL}/workflows/${workflowId}/copy`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        'x-project-id': projectId,
-      },
-      body: JSON.stringify({ new_name: newName }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'No error details available');
-      console.error(`Error copying workflow: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`Error copying workflow: ${response.statusText} (${response.status})`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Failed to copy workflow:', error);
-    handleApiError(error, { operation: 'copy workflow', resource: `workflow ${workflowId}` });
-    throw error;
-  }
-};
 
 export const toggleWorkflowDefaultStatus = async (workflowId: string): Promise<Workflow> => {
   try {

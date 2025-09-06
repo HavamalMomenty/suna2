@@ -33,7 +33,7 @@ interface FileUploadZoneProps {
   onFilesChange: (files: WorkflowFile[]) => void;
   pendingFiles?: File[];
   onPendingFilesChange?: (files: File[]) => void;
-  mode?: 'create' | 'edit';
+  mode?: 'create' | 'edit' | 'view';
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (match backend)
@@ -216,7 +216,7 @@ export function FileUploadZone({
       'image/svg+xml': ['.svg']
     },
     maxSize: MAX_FILE_SIZE,
-    disabled: false // Allow uploads in both create and edit modes
+    disabled: mode === 'view' // Disable uploads in view mode
   });
 
   const handleDeleteFile = async (fileId: string) => {
@@ -368,20 +368,22 @@ export function FileUploadZone({
                     >
                       <Download className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteFile(file.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Delete file"
-                    >
-                      {deleteMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                    {mode !== 'view' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteFile(file.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="Delete file"
+                      >
+                        {deleteMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

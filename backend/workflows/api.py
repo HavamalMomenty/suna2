@@ -35,6 +35,32 @@ router = APIRouter()
 
 db = DBConnection()
 
+async def _find_unique_workflow_name(client, base_name: str, project_id: str) -> str:
+    """Find a unique workflow name by appending numbers if needed."""
+    # First try the base name
+    result = await client.table('workflows').select('name').eq('name', base_name).eq('project_id', project_id).execute()
+    
+    if not result.data:
+        return base_name
+    
+    # If base name exists, try with numbers
+    counter = 1
+    while True:
+        candidate_name = f"{base_name}_{counter}"
+        result = await client.table('workflows').select('name').eq('name', candidate_name).eq('project_id', project_id).execute()
+        
+        if not result.data:
+            return candidate_name
+        
+        counter += 1
+        
+        # Safety check to prevent infinite loop
+        if counter > 1000:
+            # Fallback to timestamp-based naming
+            import time
+            timestamp = int(time.time())
+            return f"{base_name}_{timestamp}"
+
 @router.get("/admin-users")
 async def get_admin_users():
     """Get the list of admin user IDs."""
@@ -266,6 +292,75 @@ async def toggle_workflow_default_status(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/workflows/{workflow_id}/copy", response_model=WorkflowDefinition)
+async def copy_workflow(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt),
+    x_project_id: Optional[str] = Header(None)
+):
+    """Copy a workflow (default or user's own) to create a custom version."""
+    try:
+        client = await db.client
+        
+        if not x_project_id:
+            raise HTTPException(status_code=400, detail="Project ID is required")
+        
+        # Get the source workflow
+        result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        source_workflow = result.data[0]
+        is_owner = source_workflow['created_by'] == user_id
+        is_default = source_workflow.get('default_workflow', False)
+        
+        # Allow copying if user owns it OR it's a default workflow
+        if not is_owner and not is_default:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get user's account ID (fallback to user_id for personal accounts)
+        try:
+            account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+            account_id = account_result.data[0]['account_id'] if account_result.data else user_id
+        except Exception as e:
+            logger.warning(f"Could not get account_id for user {user_id}: {e}")
+            account_id = user_id
+        
+        # Create the copied workflow with unique name handling
+        original_name = source_workflow['name']
+        base_name = f"{original_name} (Custom)"
+        
+        # Find a unique name by trying different numbers
+        copied_name = await _find_unique_workflow_name(client, base_name, x_project_id)
+        
+        copied_workflow_data = {
+            "name": copied_name,
+            "description": source_workflow.get('description', ''),
+            "project_id": x_project_id,
+            "account_id": account_id,
+            "created_by": user_id,
+            "master_prompt": source_workflow.get('master_prompt'),
+            "login_template": source_workflow.get('login_template'),
+            "default_workflow": False,  # Always create as custom workflow
+            "definition": source_workflow.get('definition', {}),
+            "status": "draft"  # Start as draft
+        }
+        
+        result = await client.table('workflows').insert(copied_workflow_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to copy workflow")
+        
+        logger.info(f"Workflow {workflow_id} copied by user {user_id} as {copied_name}")
+        return _map_db_to_workflow_definition(result.data[0])
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error copying workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/admin/workflows/default", response_model=WorkflowDefinition)
 async def create_default_workflow(
     workflow_data: dict,
@@ -276,9 +371,13 @@ async def create_default_workflow(
     try:
         client = await db.client
         
-        # Get admin user's account ID
-        account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', admin_user_id).execute()
-        account_id = account_result.data[0]['account_id'] if account_result.data else admin_user_id
+        # Get admin user's account ID (fallback to user_id for personal accounts)
+        try:
+            account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', admin_user_id).execute()
+            account_id = account_result.data[0]['account_id'] if account_result.data else admin_user_id
+        except Exception as e:
+            logger.warning(f"Could not get account_id for admin user {admin_user_id}: {e}")
+            account_id = admin_user_id
         
         # Create the default workflow
         default_workflow_data = {
@@ -314,52 +413,6 @@ async def create_default_workflow(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workflows/{workflow_id}/copy", response_model=WorkflowDefinition)
-async def copy_workflow(
-    workflow_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt),
-    x_project_id: str = Header(...),
-    new_name: Optional[str] = None
-):
-    """Copy an existing workflow to the user's project."""
-    try:
-        client = await db.client
-        
-        # Get the source workflow
-        source_result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
-        
-        if not source_result.data:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        
-        source_workflow = source_result.data[0]
-        
-        # Get user's account ID
-        account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
-        account_id = account_result.data[0]['account_id'] if account_result.data else user_id
-        
-        # Create the copied workflow
-        new_workflow_data = {
-            "name": new_name or f"{source_workflow['name']} (Copy)",
-            "description": source_workflow.get('description'),
-            "project_id": x_project_id,
-            "account_id": account_id,
-            "created_by": user_id,
-            "master_prompt": source_workflow.get('master_prompt'),
-            "login_template": source_workflow.get('login_template'),
-            "definition": source_workflow.get('definition', {}),
-            "status": "draft"
-        }
-        
-        result = await client.table('workflows').insert(new_workflow_data).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to copy workflow")
-        
-        return _map_db_to_workflow_definition(result.data[0])
-        
-    except Exception as e:
-        logger.error(f"Error copying workflow: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/workflows", response_model=WorkflowDefinition)
 async def create_workflow(
@@ -430,6 +483,38 @@ async def get_workflow(
         raise
     except Exception as e:
         logger.error(f"Error getting workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/workflows/{workflow_id}/view", response_model=WorkflowDefinition)
+async def view_workflow(
+    workflow_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """View a workflow (read-only access for non-owners)."""
+    try:
+        client = await db.client
+        
+        # Get the workflow (user's own or default)
+        result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        
+        workflow = result.data[0]
+        is_owner = workflow['created_by'] == user_id
+        is_default = workflow.get('default_workflow', False)
+        
+        # Allow access if user owns it OR it's a default workflow
+        if not is_owner and not is_default:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        data = result.data[0]
+        return _map_db_to_workflow_definition(data)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error viewing workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/workflows/{workflow_id}", response_model=WorkflowDefinition)
