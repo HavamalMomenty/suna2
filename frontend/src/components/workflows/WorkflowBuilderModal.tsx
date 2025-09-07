@@ -119,12 +119,14 @@ export function WorkflowBuilderModal({
   useEffect(() => {
     if (existingData && (mode === 'edit' || mode === 'view')) {
       console.log('Loading existing data:', existingData);
+      console.log('Image URL in existing data:', existingData.image_url);
       setFormData(existingData);
       // Set the selected file name if there's an image
       if (existingData.image_url) {
         const fileName = existingData.image_url.split('/').pop() || 'Image';
         setSelectedFileName(fileName);
         console.log('Loading existing image:', existingData.image_url);
+        console.log('Set selectedFileName to:', fileName);
         // Generate display URL for existing image
         getImageUrl(existingData.image_url).then(url => {
           console.log('Generated display URL:', url);
@@ -132,6 +134,10 @@ export function WorkflowBuilderModal({
         }).catch(error => {
           console.error('Error loading existing image:', error);
         });
+      } else {
+        console.log('No image_url found in existing data');
+        setSelectedFileName('');
+        setDisplayImageUrl('');
       }
     }
   }, [existingData, mode]);
@@ -373,28 +379,29 @@ export function WorkflowBuilderModal({
                   Upload a JPEG or PNG image to customize your workflow card appearance
                 </p>
                 <div className="flex items-center gap-4 py-3">
-                  <div className="relative flex-1">
-                    <div className="relative">
-                      <Input
-                        id="workflow-image"
-                        type="file"
-                        accept="image/jpeg,image/png"
-                        onChange={handleImageUpload}
-                        disabled={mode === 'view'}
-                        className="h-12 cursor-pointer opacity-0 absolute inset-0 z-10"
-                      />
-                      <div className="h-12 border border-input bg-background rounded-md flex items-center px-3 hover:bg-accent hover:text-accent-foreground transition-colors">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 px-4 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium">
-                            Choose File
+                  {mode !== 'view' && (
+                    <div className="relative flex-1">
+                      <div className="relative">
+                        <Input
+                          id="workflow-image"
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={handleImageUpload}
+                          className="h-12 cursor-pointer opacity-0 absolute inset-0 z-10"
+                        />
+                        <div className="h-12 border border-input bg-background rounded-md flex items-center px-3 hover:bg-accent hover:text-accent-foreground transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 px-4 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium">
+                              {formData.image_url ? 'Change Image' : 'Choose File'}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {selectedFileName || (formData.image_url ? '' : 'No file chosen')}
+                            </span>
                           </div>
-                          <span className="text-sm text-muted-foreground">
-                            {selectedFileName || 'No file chosen'}
-                          </span>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   {displayImageUrl && (
                     <div className="relative">
                       <img 

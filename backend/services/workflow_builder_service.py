@@ -215,7 +215,7 @@ class WorkflowBuilderService:
             
             # Get workflow data
             workflow_result = self.supabase.table("workflows").select(
-                "name, description, master_prompt, login_template"
+                "name, description, master_prompt, login_template, image_url"
             ).eq("id", workflow_id).execute()
             
             if not workflow_result.data:
@@ -231,7 +231,8 @@ class WorkflowBuilderService:
                 description=workflow["description"],
                 master_prompt=workflow["master_prompt"] or "",
                 login_template=workflow["login_template"] or "",
-                files=files
+                files=files,
+                image_url=workflow.get("image_url")
             )
             
         except Exception as e:

@@ -2078,6 +2078,8 @@ export const viewWorkflow = async (workflowId: string, projectId?: string): Prom
     }
 
     const workflowData = await response.json();
+    console.log('Backend workflow data for view:', workflowData);
+    console.log('Image URL from backend:', workflowData.image_url);
     
     // Convert backend workflow format to frontend format
     const workflow: Workflow = {
