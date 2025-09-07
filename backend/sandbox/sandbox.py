@@ -114,9 +114,9 @@ def create_sandbox(password: str, project_id: str = None):
             #"LLAMA_API_KEY": os.getenv("LLAMA_API_KEY", "")
         },
         resources=Resources(
-            cpu=1,
-            memory=1,
-            disk=2,
+            cpu=2,
+            memory=4,
+            disk=5,
         ),
         auto_stop_interval=15,
         auto_archive_interval=24 * 60,

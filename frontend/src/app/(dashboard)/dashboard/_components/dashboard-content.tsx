@@ -35,12 +35,15 @@ import { useWorkflowFiles } from '@/hooks/react-query/workflows/use-workflow-bui
 import { downloadWorkflowFiles } from '@/lib/workflow-utils';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
 export function DashboardContent() {
   const [inputValue, setInputValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWorkflowLoading, setIsWorkflowLoading] = useState(false);
+  const [workflowLoadingMessage, setWorkflowLoadingMessage] = useState('');
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(null);
@@ -152,6 +155,10 @@ export function DashboardContent() {
       console.log('🔄 Workflow execution started:', workflow);
       console.log('📝 Master prompt:', workflow.master_prompt);
       
+      // Show loading overlay with spinner
+      setIsWorkflowLoading(true);
+      setWorkflowLoadingMessage(`Starting ${workflow.name}...`);
+      
       // Fetch workflow files from the API first
       const supabase = createClient();
       const {
@@ -162,6 +169,7 @@ export function DashboardContent() {
         throw new Error('No access token available');
       }
 
+      setWorkflowLoadingMessage('Loading workflow files...');
       const filesResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/workflows/${workflow.id}/files`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -173,6 +181,7 @@ export function DashboardContent() {
         console.log('📄 Workflow files found:', workflowFiles);
         
         if (workflowFiles && workflowFiles.length > 0) {
+          setWorkflowLoadingMessage(`Downloading ${workflowFiles.length} file(s)...`);
           // Download workflow files
           const downloadedFiles = await downloadWorkflowFiles(workflow.id, workflowFiles);
           
@@ -191,6 +200,7 @@ export function DashboardContent() {
       
       // Directly trigger the conversation with the master prompt
       console.log('🚀 Calling handleSubmit with master prompt:', workflow.master_prompt);
+      setWorkflowLoadingMessage('Launching workflow...');
       
       // Debug: Check if files are in chat input before submission
       const pendingFiles = chatInputRef.current?.getPendingFiles() || [];
@@ -201,6 +211,10 @@ export function DashboardContent() {
     } catch (error) {
       console.error('❌ Error executing workflow:', error);
       toast.error('Failed to execute workflow. Please try again.');
+    } finally {
+      // Hide loading overlay
+      setIsWorkflowLoading(false);
+      setWorkflowLoadingMessage('');
     }
   };
 
@@ -231,6 +245,10 @@ export function DashboardContent() {
   return (
     <>
       <ModalProviders />
+      <LoadingOverlay 
+        isVisible={isWorkflowLoading} 
+        message={workflowLoadingMessage}
+      />
       <div className="flex flex-col min-h-screen w-full">
         {isMobile && (
           <div className="absolute top-4 left-4 z-10">
@@ -285,7 +303,11 @@ export function DashboardContent() {
             />
           </div>
 
-          <Examples onSelectPrompt={setInputValue} onSelectWorkflow={handleWorkflowExecution} />
+          <Examples 
+            onSelectPrompt={setInputValue} 
+            onSelectWorkflow={handleWorkflowExecution}
+            onDoubleClickWorkflow={handleWorkflowExecution}
+          />
           </div>
         </div>
 

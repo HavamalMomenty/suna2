@@ -7,9 +7,11 @@ import { getProjects } from '@/lib/api';
 export const Examples = ({
   onSelectPrompt,
   onSelectWorkflow,
+  onDoubleClickWorkflow,
 }: {
   onSelectPrompt?: (query: string) => void;
   onSelectWorkflow?: (workflow: any) => void;
+  onDoubleClickWorkflow?: (workflow: any) => void;
 }) => {
   const [projectId, setProjectId] = useState<string | null>(null);
 
@@ -55,6 +57,7 @@ export const Examples = ({
   return (
     <WorkflowCards 
       onSelectWorkflow={handleWorkflowSelect}
+      onDoubleClickWorkflow={onDoubleClickWorkflow}
       projectId={projectId}
     />
   );

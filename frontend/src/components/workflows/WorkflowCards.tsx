@@ -64,9 +64,10 @@ const WorkflowImage = ({ imagePath, alt, className }: { imagePath: string; alt: 
 interface WorkflowCardsProps {
   onSelectWorkflow?: (workflow: Workflow) => void;
   projectId: string;
+  onDoubleClickWorkflow?: (workflow: Workflow) => void;
 }
 
-export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProps) => {
+export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkflow }: WorkflowCardsProps) => {
   const [builderModalOpen, setBuilderModalOpen] = useState(false);
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
@@ -105,6 +106,15 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
   const handleWorkflowClick = (workflow: any) => {
     if (onSelectWorkflow) {
       onSelectWorkflow(workflow);
+    }
+  };
+
+  const handleWorkflowDoubleClick = (workflow: any, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDoubleClickWorkflow) {
+      toast.success(`Running ${workflow.name}...`);
+      onDoubleClickWorkflow(workflow);
     }
   };
 
@@ -217,8 +227,10 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId }: WorkflowCardsProp
                 }}
               >
                 <Card 
-                  className="group cursor-pointer h-34 w-full shadow-none transition-all p-0 justify-center relative bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-lg overflow-hidden"
+                  className="group cursor-pointer h-34 w-full shadow-none transition-all p-0 justify-center relative bg-sidebar hover:bg-neutral-100 dark:hover:bg-neutral-800/60 rounded-lg overflow-hidden active:scale-95"
                   onClick={() => handleWorkflowClick(workflow)}
+                  onDoubleClick={(e) => handleWorkflowDoubleClick(workflow, e)}
+                  title="Click to select, double-click to run"
                 >
                   {/* Background Image */}
                   {workflow.image_url && (
