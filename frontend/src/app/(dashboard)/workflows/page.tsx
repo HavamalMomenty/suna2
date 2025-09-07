@@ -111,6 +111,13 @@ export default function WorkflowsPage() {
   // Check if current user is admin
   const { data: isAdmin = false } = useIsAdmin();
 
+  // Handle workflow click - open in view mode
+  const handleWorkflowClick = (workflow: Workflow) => {
+    setBuilderWorkflowId(workflow.id);
+    setBuilderMode('view');
+    setBuilderModalOpen(true);
+  };
+
 
 
   useEffect(() => {
