@@ -18,10 +18,8 @@ def _load_admin_user_ids():
             data = json.load(f)
             return set(data.get('admin_user_ids', []))
     except (FileNotFoundError, json.JSONDecodeError):
-        # Fallback to hardcoded values if JSON file doesn't exist or is invalid
-        return {
-            "00af93e6-1dd3-4fc2-baf0-558b24634a5d",  # Your user ID
-        }
+        # Return empty set if file doesn't exist or is invalid
+        return set()
 
 # Admin user IDs loaded from JSON file
 ADMIN_USER_IDS = _load_admin_user_ids()

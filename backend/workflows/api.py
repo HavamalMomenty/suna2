@@ -33,6 +33,7 @@ from webhooks.providers import TelegramWebhookProvider
 
 router = APIRouter()
 
+
 db = DBConnection()
 
 async def _find_unique_workflow_name(client, base_name: str, project_id: str) -> str:
@@ -64,20 +65,20 @@ async def _find_unique_workflow_name(client, base_name: str, project_id: str) ->
 @router.get("/admin-users")
 async def get_admin_users():
     """Get the list of admin user IDs."""
+    import os
+    import json
+    
+    # Load from admin_users_list.json in backend root
+    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    json_file = os.path.join(current_dir, 'admin_users_list.json')
+    
     try:
-        import os
-        import json
-        
-        # Load from admin_users_list.json in backend root
-        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_file = os.path.join(current_dir, 'admin_users_list.json')
-        
         with open(json_file, 'r') as f:
             data = json.load(f)
             return data
     except (FileNotFoundError, json.JSONDecodeError):
-        # Fallback if file doesn't exist
-        return {"admin_user_ids": ["00af93e6-1dd3-4fc2-baf0-558b24634a5d"]}
+        # Return empty list if file doesn't exist or is invalid
+        return {"admin_user_ids": []}
 workflow_converter = WorkflowConverter()
 workflow_executor = WorkflowExecutor(db)
 workflow_scheduler = WorkflowScheduler(db, workflow_executor)

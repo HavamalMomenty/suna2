@@ -1539,13 +1539,47 @@ INSTRUCTIONS:
         # Get preview links
         vnc_link = sandbox.get_preview_link(6080)
         website_link = sandbox.get_preview_link(8080)
+        
+        # Debug: Log the actual structure of the preview link objects
+        logger.info(f"VNC link object: {vnc_link}")
+        logger.info(f"VNC link type: {type(vnc_link)}")
+        logger.info(f"VNC link dir: {dir(vnc_link)}")
+        logger.info(f"Website link object: {website_link}")
+        logger.info(f"Website link type: {type(website_link)}")
+        logger.info(f"Website link dir: {dir(website_link)}")
+        
         vnc_url = vnc_link.url if hasattr(vnc_link, 'url') else str(vnc_link).split("url='")[1].split("'")[0]
         website_url = website_link.url if hasattr(website_link, 'url') else str(website_link).split("url='")[1].split("'")[0]
+        
+        logger.info(f"Extracted VNC URL: {vnc_url}")
+        logger.info(f"Extracted website URL: {website_url}")
+        
         token = None
         if hasattr(vnc_link, 'token'):
             token = vnc_link.token
+            logger.info(f"Found token via hasattr: {token}")
         elif "token='" in str(vnc_link):
             token = str(vnc_link).split("token='")[1].split("'")[0]
+            logger.info(f"Found token via string parsing: {token}")
+        else:
+            logger.info("No token found in VNC link")
+            
+        # Check if website_link has a different token
+        if not token and hasattr(website_link, 'token'):
+            token = website_link.token
+            logger.info(f"Found token in website_link: {token}")
+        elif not token and "token='" in str(website_link):
+            token = str(website_link).split("token='")[1].split("'")[0]
+            logger.info(f"Found token in website_link via string parsing: {token}")
+
+        # If Daytona provided a preview token, append it to both URLs
+        if token:
+            vnc_url = f"{vnc_url}{'&' if '?' in vnc_url else '?'}token={token}"
+            website_url = f"{website_url}{'&' if '?' in website_url else '?'}token={token}"
+            logger.info(f"Final VNC URL with token: {vnc_url}")
+            logger.info(f"Final website URL with token: {website_url}")
+        else:
+            logger.warning("No token found - URLs will not include authentication token")
         
         # Update project with sandbox info
         update_result = await client.table('projects').update({
@@ -1554,6 +1588,8 @@ INSTRUCTIONS:
                 'pass': sandbox_pass, 
                 'vnc_preview': vnc_url,
                 'sandbox_url': website_url, 
+                'vnc_preview_skip': f"/api/preview-skip?url={vnc_url}",
+                'sandbox_url_skip': f"/api/preview-skip?url={website_url}",
                 'token': token
             }
         }).eq('project_id', project_id).execute()
