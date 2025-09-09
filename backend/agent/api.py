@@ -1026,14 +1026,22 @@ async def initiate_agent_with_files(
         raise HTTPException(status_code=402, detail={"message": message, "subscription": subscription})
 
     try:
-        # 1. Create Project
+        # 1. Create Project (enforce 1:1 user_id = project_id relationship)
         placeholder_name = f"{prompt[:30]}..." if len(prompt) > 30 else prompt
-        project = await client.table('projects').insert({
-            "project_id": str(uuid.uuid4()), "account_id": account_id, "name": placeholder_name,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-        project_id = project.data[0]['project_id']
-        logger.info(f"Created new project: {project_id}")
+        project_id = user_id  # HACKY: Force project_id to always equal user_id for 1:1 relationship
+        
+        # Check if project already exists for this user
+        existing_project = await client.table('projects').select('project_id').eq('project_id', project_id).execute()
+        
+        if existing_project.data:
+            logger.info(f"Using existing project for user: {project_id}")
+        else:
+            # Create new project with user_id as project_id
+            project = await client.table('projects').insert({
+                "project_id": project_id, "account_id": account_id, "name": placeholder_name,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+            logger.info(f"Created new project with user_id as project_id: {project_id}")
 
         # 2. Create Sandbox
         sandbox_id = None

@@ -222,11 +222,8 @@ async def list_workflows(
     try:
         client = await db.client
         
-        # Get user's own workflows
-        query = client.table('workflows').select('*').eq('account_id', user_id)
-        
-        if x_project_id:
-            query = query.eq('project_id', x_project_id)
+        # Get user's own workflows by created_by (user_id) - no longer dependent on project_id
+        query = client.table('workflows').select('*').eq('created_by', user_id)
         
         result = await query.execute()
         
@@ -454,12 +451,15 @@ async def create_workflow(
         workflow_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         
+        # Use user_id as project_id for 1:1 relationship, or use provided project_id if available
+        project_id = request.project_id if request.project_id else user_id
+        
         workflow_data = {
             'id': workflow_id,
             'name': request.name,
             'description': request.description,
-            'project_id': request.project_id,
-            'account_id': user_id,
+            'project_id': project_id,
+            'account_id': user_id,  # Use user_id as account_id for simplicity
             'created_by': user_id,
             'status': 'draft',
             'version': 1,
@@ -689,6 +689,7 @@ async def execute_workflow(
             raise HTTPException(status_code=400, detail="Workflow must be active or draft to execute")
         
         execution_id = str(uuid.uuid4())
+        
         execution_data = {
             "id": execution_id,
             "workflow_id": workflow_id,
@@ -696,7 +697,7 @@ async def execute_workflow(
             "workflow_name": workflow.name,
             "execution_context": request.variables or {},
             "project_id": workflow.project_id,
-            "account_id": user_id,
+            "account_id": user_id,  # Use user_id as account_id for simplicity
             "triggered_by": "MANUAL",
             "status": "pending",
             "started_at": datetime.now(timezone.utc).isoformat()
@@ -1312,6 +1313,7 @@ async def create_workflow_from_template(
             raise HTTPException(status_code=404, detail="Template not found")
         
         template_data = template_result.data[0]
+        
         workflow_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         
@@ -1322,7 +1324,7 @@ async def create_workflow_from_template(
             'name': f"{template_data['name']} (Copy)",
             'description': template_data.get('description'),
             'project_id': x_project_id,
-            'account_id': user_id,
+            'account_id': user_id,  # Use user_id as account_id for simplicity
             'created_by': user_id,
             'status': 'draft',
             'version': 1,
