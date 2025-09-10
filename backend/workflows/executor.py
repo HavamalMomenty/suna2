@@ -45,6 +45,9 @@ class WorkflowExecutor:
             
             await self._ensure_project_has_sandbox(project_id)
             
+            # Transfer workflow files to sandbox after ensuring sandbox exists
+            await self._transfer_workflow_files_to_sandbox(workflow.id, project_id)
+            
             await self._ensure_workflow_thread_exists(thread_id, project_id, workflow, variables)
 
             if not workflow.steps:
@@ -61,6 +64,14 @@ class WorkflowExecutor:
                     variables_text += f"- **{key}**: {value}\n"
                 variables_text += "\nUse these variables as needed during workflow execution.\n"
                 system_prompt += variables_text
+
+            # Add information about workflow_specifications directory
+            workflow_files_text = "\n\n## Workflow Context Files\n"
+            workflow_files_text += "Workflow context files have been automatically placed in the `/workspace/workflow_specifications/` directory.\n"
+            workflow_files_text += "These files contain important context, data, and reference materials for this workflow.\n"
+            workflow_files_text += "You can access these files using standard file operations within the /workspace/workflow_specifications/ directory.\n"
+            workflow_files_text += "List the contents of this directory at the start of your workflow to see what context files are available.\n"
+            system_prompt += workflow_files_text
 
             enabled_tools = self._extract_enabled_tools_from_workflow(workflow)
             
@@ -563,4 +574,79 @@ class WorkflowExecutor:
                 logger.error(f"Error cleaning up sandbox {sandbox_id}: {str(cleanup_e)}")
             raise Exception("Failed to update project with sandbox information")
         
-        logger.info(f"Successfully created and configured sandbox {sandbox_id} for workflow project {project_id}") 
+        logger.info(f"Successfully created and configured sandbox {sandbox_id} for workflow project {project_id}")
+
+    async def _transfer_workflow_files_to_sandbox(self, workflow_id: str, project_id: str):
+        """Transfer workflow files to the sandbox's workflow_specifications directory."""
+        try:
+            logger.info(f"Transferring workflow files for workflow {workflow_id} to sandbox")
+            
+            # Get workflow files from database
+            client = await self.db.client
+            files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
+            
+            if not files_result.data:
+                logger.info(f"No workflow files found for workflow {workflow_id}")
+                return
+            
+            # Get project sandbox info
+            project_result = await client.table('projects').select('sandbox').eq('project_id', project_id).execute()
+            if not project_result.data or not project_result.data[0].get('sandbox'):
+                raise ValueError(f"No sandbox found for project {project_id}")
+            
+            sandbox_info = project_result.data[0]['sandbox']
+            sandbox_id = sandbox_info.get('id')
+            
+            if not sandbox_id:
+                raise ValueError(f"No sandbox ID found for project {project_id}")
+            
+            # Get sandbox instance
+            from sandbox.sandbox import get_or_start_sandbox
+            sandbox = await get_or_start_sandbox(sandbox_id)
+            
+            # Create workflow_specifications directory
+            try:
+                sandbox.fs.create_folder("/workspace/workflow_specifications", 755)
+                logger.info("Created /workspace/workflow_specifications directory")
+            except Exception as folder_error:
+                logger.info(f"Directory may already exist: {folder_error}")
+            
+            # Download and transfer each file
+            from services.workflow_builder_service import WorkflowBuilderService
+            service = WorkflowBuilderService()
+            
+            transferred_files = []
+            for file_data in files_result.data:
+                try:
+                    file_path = file_data['file_path']
+                    filename = file_data['filename']
+                    
+                    logger.info(f"Downloading file {filename} from storage path {file_path}")
+                    
+                    # Download file content from Supabase Storage
+                    file_content = service.supabase.storage.from_("workflow-files").download(file_path)
+                    
+                    if not file_content:
+                        logger.warning(f"No content found for file {filename}")
+                        continue
+                    
+                    # Upload file to sandbox
+                    sandbox_file_path = f"/workspace/workflow_specifications/{filename}"
+                    sandbox.fs.upload_file(file_content, sandbox_file_path)
+                    
+                    transferred_files.append(filename)
+                    logger.info(f"Successfully transferred {filename} to {sandbox_file_path}")
+                    
+                except Exception as file_error:
+                    logger.error(f"Failed to transfer file {file_data.get('filename', 'unknown')}: {file_error}")
+                    continue
+            
+            if transferred_files:
+                logger.info(f"Successfully transferred {len(transferred_files)} workflow files to sandbox: {', '.join(transferred_files)}")
+            else:
+                logger.warning("No workflow files were successfully transferred")
+                
+        except Exception as e:
+            logger.error(f"Failed to transfer workflow files to sandbox: {e}")
+            # Don't raise exception to avoid breaking workflow execution
+            # File transfer is an enhancement, not critical for basic execution
