@@ -10,12 +10,15 @@ import { ArrowLeft, Play, X, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getWorkflow, executeWorkflowWithBuilderData, getProjects, type Workflow } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
+import { FileUploadZone } from "@/components/workflows/FileUploadZone";
+import { type WorkflowFile } from "@/hooks/react-query/workflows/use-workflow-builder";
 
-// Custom function to execute workflow with additional prompt
+// Custom function to execute workflow with additional prompt and files
 const executeWorkflowWithAdditionalPrompt = async (
   workflowId: string,
   projectId: string,
-  additionalPrompt: string
+  additionalPrompt: string,
+  uploadedFiles: WorkflowFile[] = []
 ): Promise<{ thread_id: string; agent_run_id: string }> => {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
   
@@ -49,11 +52,12 @@ const executeWorkflowWithAdditionalPrompt = async (
       master_prompt = master_prompt + '\n\n--- Additional Instructions ---\n' + additionalPrompt.trim();
     }
 
-    // Step 3: Prepare files for upload (if any)
+    // Step 3: Prepare files for upload (workflow files + uploaded files)
     const formData = new FormData();
     formData.append('prompt', master_prompt || '');
     formData.append('stream', 'false');
 
+    // Add workflow files
     if (files && files.length > 0) {
       for (const file of files) {
         try {
@@ -70,6 +74,27 @@ const executeWorkflowWithAdditionalPrompt = async (
           }
         } catch (fileError) {
           console.warn(`Failed to fetch file ${file.filename}:`, fileError);
+        }
+      }
+    }
+
+    // Add uploaded files from the configure page
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      for (const uploadedFile of uploadedFiles) {
+        try {
+          // Get the uploaded file content from Supabase Storage
+          const fileContentResponse = await fetch(`${API_URL}/workflows/${workflowId}/files/${uploadedFile.id}/content`, {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (fileContentResponse.ok) {
+            const fileBlob = await fileContentResponse.blob();
+            formData.append('files', fileBlob, uploadedFile.filename);
+          }
+        } catch (fileError) {
+          console.warn(`Failed to fetch uploaded file ${uploadedFile.filename}:`, fileError);
         }
       }
     }
@@ -106,6 +131,7 @@ export default function ConfigureWorkflowRunPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [executing, setExecuting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<WorkflowFile[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -156,8 +182,8 @@ export default function ConfigureWorkflowRunPage() {
     try {
       setExecuting(true);
       
-      // Execute workflow with additional prompt if provided
-      const result = await executeWorkflowWithAdditionalPrompt(workflowId, projectId, additionalPrompt.trim());
+      // Execute workflow with additional prompt and uploaded files if provided
+      const result = await executeWorkflowWithAdditionalPrompt(workflowId, projectId, additionalPrompt.trim(), uploadedFiles);
       
       toast.success("Workflow execution started! Redirecting to chat...");
       
@@ -247,22 +273,24 @@ export default function ConfigureWorkflowRunPage() {
           </CardContent>
         </Card>
 
-        {/* File Upload - Placeholder for future implementation */}
-        <Card className="opacity-50">
+        {/* File Upload Component */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
               Upload Workflow Files
             </CardTitle>
             <CardDescription>
-              Upload files specific to this workflow run (Coming Soon)
+              Upload files specific to this workflow run. These files will be available to the workflow during execution.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">File upload will be available in a future update</p>
-            </div>
+            <FileUploadZone
+              workflowId={workflowId}
+              files={uploadedFiles}
+              onFilesChange={setUploadedFiles}
+              mode="edit"
+            />
           </CardContent>
         </Card>
 
