@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getWorkflows, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, executeWorkflowWithBuilderData, viewWorkflow, copyWorkflow, type Workflow } from "@/lib/api";
+import { getWorkflows, deleteWorkflow, getProjects, createWorkflow, updateWorkflow, viewWorkflow, copyWorkflow, type Workflow } from "@/lib/api";
 import { useUpdateWorkflowStatus } from "@/hooks/react-query/workflows/use-workflows";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -91,7 +91,6 @@ export default function WorkflowsPage() {
   const [customWorkflows, setCustomWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [executingWorkflows, setExecutingWorkflows] = useState<Set<string>>(new Set());
   const [projectId, setProjectId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(null);
@@ -184,40 +183,9 @@ export default function WorkflowsPage() {
   }, [projectId]);
 
 
-  const handleRunWorkflow = async (workflowId: string) => {
-    if (!projectId) {
-      toast.error("No project selected");
-      return;
-    }
-    try {
-      setExecutingWorkflows(prev => new Set(prev).add(workflowId));
-      
-      // Use the new workflow execution function that includes master prompt and files
-      const result = await executeWorkflowWithBuilderData(workflowId, projectId);
-      
-      toast.success("Workflow execution started! Redirecting to chat...");
-      
-      if (result.thread_id) {
-        // Don't clear the executing state when redirecting - user won't see the workflows page anyway
-        router.push(`/projects/${projectId}/thread/${result.thread_id}`);
-      } else {
-        // Only clear if no redirect happened
-        setExecutingWorkflows(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(workflowId);
-          return newSet;
-        });
-      }
-    } catch (err) {
-      console.error('Error executing workflow:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to execute workflow');
-      // Clear executing state on error
-      setExecutingWorkflows(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(workflowId);
-        return newSet;
-      });
-    }
+  const handleRunWorkflow = (workflowId: string) => {
+    // Navigate to the configure workflow run page
+    router.push(`/workflows/configure/${workflowId}`);
   };
 
   const handleViewWorkflow = async (workflow: Workflow) => {
@@ -518,14 +486,13 @@ export default function WorkflowsPage() {
                     variant="ghost" 
                     size="sm"
                     className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
-                    disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
-                    onClick={() => handleRunWorkflow(workflow.id)}
+                    disabled={workflow.status !== 'active'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRunWorkflow(workflow.id);
+                    }}
                   >
-                    {executingWorkflows.has(workflow.id) ? (
-                      <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                    ) : (
-                      <Play className="h-3 w-3" />
-                    )}
+                    <Play className="h-3 w-3" />
                   </Button>
                 </div>
                 {/* Action buttons positioned at bottom */}
@@ -534,16 +501,15 @@ export default function WorkflowsPage() {
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleRunWorkflow(workflow.id)}
-                      disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRunWorkflow(workflow.id);
+                      }}
+                      disabled={workflow.status !== 'active'}
                       className="flex-1"
                     >
-                      {executingWorkflows.has(workflow.id) ? (
-                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                      {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
+                      <Play className="h-3 w-3" />
+                      Run
                     </Button>
 
                     {/* For default workflows: Different buttons for admins vs non-admins */}
