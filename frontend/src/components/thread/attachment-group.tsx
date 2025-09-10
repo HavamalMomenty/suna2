@@ -123,7 +123,7 @@ export function AttachmentGroup({
 
     // Pre-compute any conditional values used in rendering
     // This ensures hooks aren't conditionally called
-    const maxVisibleFiles = isMobile ? 2 : 5;
+    const maxVisibleFiles = isMobile ? 2 : 8;
     let visibleCount = Math.min(maxVisibleFiles, uniqueFiles.length);
     let moreCount = uniqueFiles.length - visibleCount;
 

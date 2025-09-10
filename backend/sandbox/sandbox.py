@@ -80,7 +80,7 @@ def start_supervisord_session(sandbox: Sandbox):
         logger.error(f"Error starting supervisord session: {str(e)}")
         raise e
 
-def create_sandbox(password: str, project_id: str = None):
+def create_sandbox(password: str, project_id: str = None, user_id: str = None):
     """Create a new sandbox with all required services configured and running."""
     
     logger.debug("Creating new Daytona sandbox environment")
@@ -90,10 +90,12 @@ def create_sandbox(password: str, project_id: str = None):
     if project_id:
         logger.debug(f"Using sandbox_id as label: {project_id}")
         labels = {'id': project_id}
+        if user_id:
+            labels['user_id'] = user_id
         
     params = CreateSandboxFromImageParams(
         image=Configuration.SANDBOX_IMAGE_NAME,
-        public=True,
+        public=False,  # Make sandboxes private for security
         labels=labels,
         env_vars={
             # Browser configuration

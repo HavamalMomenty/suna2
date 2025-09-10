@@ -186,7 +186,7 @@ async def import_project_from_file(input_file: str, to_user_id: str = None, crea
         # Create new sandbox if requested
         if create_new_sandbox:
             logger.info("Creating new sandbox...")
-            new_sandbox = create_sandbox(project_data["sandbox"]["pass"], project_data["project_id"])
+            new_sandbox = create_sandbox(project_data["sandbox"]["pass"], project_data["project_id"], to_user_id)
             
             if new_sandbox:
                 vnc_link = new_sandbox.get_preview_link(6080)

@@ -1531,9 +1531,13 @@ INSTRUCTIONS:
         from sandbox.sandbox import create_sandbox
         import uuid
         
+        # Get project data to extract user_id for sandbox labeling
+        project_result = await client.table('projects').select('account_id').eq('project_id', project_id).execute()
+        user_id = project_result.data[0]['account_id'] if project_result.data else None
+        
         # Create a new sandbox
         sandbox_pass = str(uuid.uuid4())
-        sandbox = create_sandbox(sandbox_pass, project_id)
+        sandbox = create_sandbox(sandbox_pass, project_id, user_id)
         sandbox_id = sandbox.id
         logger.info(f"Created new sandbox {sandbox_id} for workflow project {project_id}")
         

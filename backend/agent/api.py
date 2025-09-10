@@ -1047,7 +1047,7 @@ async def initiate_agent_with_files(
         sandbox_id = None
         try:
           sandbox_pass = str(uuid.uuid4())
-          sandbox = create_sandbox(sandbox_pass, project_id)
+          sandbox = create_sandbox(sandbox_pass, project_id, user_id)
           sandbox_id = sandbox.id
           logger.info(f"Created new sandbox {sandbox_id} for project {project_id}")
           

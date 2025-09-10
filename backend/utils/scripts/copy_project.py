@@ -210,13 +210,13 @@ async def get_user(user_id: str):
     return user.user.model_dump()
 
 
-async def copy_sandbox(sandbox_id: str, password: str, project_id: str) -> Sandbox:
+async def copy_sandbox(sandbox_id: str, password: str, project_id: str, user_id: str = None) -> Sandbox:
     sandbox = daytona.find_one(sandbox_id=sandbox_id)
     if not sandbox:
         raise Exception(f"Sandbox {sandbox_id} not found")
 
     # TODO: Currently there's no way to create a copy of a sandbox, so we will create a new one
-    new_sandbox = create_sandbox(password, project_id)
+    new_sandbox = create_sandbox(password, project_id, user_id)
     return new_sandbox
 
 
@@ -256,7 +256,7 @@ async def main():
         )
 
         new_sandbox = await copy_sandbox(
-            project["sandbox"]["id"], project["sandbox"]["pass"], args.project_id
+            project["sandbox"]["id"], project["sandbox"]["pass"], args.project_id, to_user["id"]
         )
         if new_sandbox:
             vnc_link = new_sandbox.get_preview_link(6080)
