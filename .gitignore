@@ -219,3 +219,5 @@ frontend/public/Instruction_documents
 backend/admin_users_list.json
 docs/BILLING_REMOVAL_PLAN.md
 frontend/.env.remote
+backend/.env_prod
+frontend/.env.prod
