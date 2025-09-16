@@ -451,8 +451,8 @@ async def create_workflow(
         workflow_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         
-        # Use user_id as project_id for 1:1 relationship, or use provided project_id if available
-        project_id = request.project_id if request.project_id else user_id
+        # Use provided project_id if available, otherwise generate a unique one for each workflow
+        project_id = request.project_id if request.project_id else str(uuid.uuid4())
         
         workflow_data = {
             'id': workflow_id,

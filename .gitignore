@@ -221,3 +221,7 @@ docs/BILLING_REMOVAL_PLAN.md
 frontend/.env.remote
 backend/.env_prod
 frontend/.env.prod
+frontend/.env.local.prod
+frontend/.env.local.dev
+backend/.env.dev
+backend/.env.prod
