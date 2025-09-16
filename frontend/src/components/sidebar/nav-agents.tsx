@@ -10,7 +10,6 @@ import {
   Plus,
   MessagesSquare,
   Loader2,
-  Share2,
   X,
   Check,
   History
@@ -40,7 +39,6 @@ import {
   TooltipTrigger
 } from "@/components/ui/tooltip"
 import Link from "next/link"
-import { ShareModal } from "./share-modal"
 import { DeleteConfirmationDialog } from "@/components/thread/DeleteConfirmationDialog"
 import { useDeleteOperation } from '@/contexts/DeleteOperationContext'
 import { Button } from "@/components/ui/button"
@@ -52,8 +50,6 @@ import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
 export function NavAgents() {
   const { isMobile, state } = useSidebar()
   const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null)
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<{ threadId: string, projectId: string } | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -392,11 +388,11 @@ export function NavAgents() {
                       className="text-muted-foreground hover:text-foreground h-7 w-7 flex items-center justify-center rounded-md"
                     >
                       <Plus className="h-4 w-4" />
-                      <span className="sr-only">New Agent</span>
+                      <span className="sr-only">New Conversation</span>
                     </Link>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>New Agent</TooltipContent>
+                <TooltipContent>New Conversation</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -412,12 +408,12 @@ export function NavAgents() {
                   <SidebarMenuButton asChild>
                     <Link href="/dashboard" className="flex items-center">
                       <Plus className="h-4 w-4" />
-                      <span>New Agent</span>
+                      <span>New Conversation</span>
                     </Link>
                   </SidebarMenuButton>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>New Agent</TooltipContent>
+              <TooltipContent>New Conversation</TooltipContent>
             </Tooltip>
           </SidebarMenuItem>
         )}
@@ -547,13 +543,6 @@ export function NavAgents() {
                         side={isMobile ? 'bottom' : 'right'}
                         align={isMobile ? 'end' : 'start'}
                       >
-                        <DropdownMenuItem onClick={() => {
-                          setSelectedItem({ threadId: thread?.threadId, projectId: thread?.projectId })
-                          setShowShareModal(true)
-                        }}>
-                          <Share2 className="text-muted-foreground" />
-                          <span>Share Chat</span>
-                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <a
                             href={thread.url}
@@ -607,12 +596,6 @@ export function NavAgents() {
         </div>
       )}
 
-      <ShareModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        threadId={selectedItem?.threadId}
-        projectId={selectedItem?.projectId}
-      />
 
       {threadToDelete && (
         <DeleteConfirmationDialog

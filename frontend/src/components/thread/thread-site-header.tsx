@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button"
-import { FolderOpen, Link, PanelRightOpen, Check, X, Menu, Share2, Book } from "lucide-react"
+import { FolderOpen, Link, PanelRightOpen, Check, X, Menu, Book } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -17,7 +17,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { useSidebar } from "@/components/ui/sidebar"
-import { ShareModal } from "@/components/sidebar/share-modal"
 import { useQueryClient } from "@tanstack/react-query";
 import { projectKeys } from "@/hooks/react-query/sidebar/keys";
 import { threadKeys } from "@/hooks/react-query/threads/keys";
@@ -55,7 +54,6 @@ export function SiteHeader({
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(projectName)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [showShareModal, setShowShareModal] = useState(false);
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const queryClient = useQueryClient();
   const { flags, loading: flagsLoading } = useFeatureFlags(['knowledge_base']);
@@ -65,9 +63,6 @@ export function SiteHeader({
   const { setOpenMobile } = useSidebar()
   const updateProjectMutation = useUpdateProject()
 
-  const openShareModal = () => {
-    setShowShareModal(true)
-  }
 
   const openKnowledgeBase = () => {
     setShowKnowledgeBase(true)
@@ -248,21 +243,6 @@ export function SiteHeader({
                   </TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={openShareModal}
-                    className="h-9 w-9 cursor-pointer"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Share Chat</p>
-                </TooltipContent>
-              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -283,12 +263,6 @@ export function SiteHeader({
           )}
         </div>
       </header>
-      <ShareModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        threadId={threadId}
-        projectId={projectId}
-      />
       
       <Dialog open={showKnowledgeBase} onOpenChange={setShowKnowledgeBase}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0">

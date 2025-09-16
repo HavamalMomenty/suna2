@@ -17,6 +17,7 @@ import {
   AudioWaveform,
   Sun,
   Moon,
+  Trash2,
 } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
 import NewTeamForm from '@/components/basejump/new-team-form';
@@ -48,6 +49,20 @@ import {
 } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
+import { useDeleteMultipleThreads, useThreads } from '@/hooks/react-query/sidebar/use-sidebar';
+import { useQueryClient } from '@tanstack/react-query';
+import { threadKeys } from '@/hooks/react-query/sidebar/keys';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function NavUserWithTeams({
   user,
@@ -62,7 +77,12 @@ export function NavUserWithTeams({
   const { isMobile } = useSidebar();
   const { data: accounts } = useAccounts();
   const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = React.useState(false);
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
+  
+  const { data: threads = [] } = useThreads();
+  const { mutate: deleteMultipleThreadsMutation, isPending: isDeletingAll } = useDeleteMultipleThreads();
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -145,6 +165,40 @@ export function NavUserWithTeams({
     router.push('/auth');
   };
 
+  const handleDeleteAllConversations = () => {
+    if (threads.length === 0) {
+      toast.info('No conversations to delete');
+      return;
+    }
+    setShowDeleteAllDialog(true);
+  };
+
+  const confirmDeleteAllConversations = () => {
+    if (threads.length === 0) return;
+
+    const threadIds = threads.map(thread => thread.thread_id);
+    
+    deleteMultipleThreadsMutation(
+      {
+        threadIds,
+        threadSandboxMap: Object.fromEntries(
+          threads.map(thread => [thread.thread_id, ''])
+        ),
+      },
+      {
+        onSuccess: (data) => {
+          queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
+          toast.success(`Successfully deleted ${data.successful.length} conversations`);
+          setShowDeleteAllDialog(false);
+        },
+        onError: (error) => {
+          console.error('Error deleting all conversations:', error);
+          toast.error('Error deleting conversations');
+        },
+      }
+    );
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -159,36 +213,16 @@ export function NavUserWithTeams({
   }
 
   return (
-    <Dialog open={showNewTeamDialog} onOpenChange={setShowNewTeamDialog}>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
-                </div>
-                <ChevronsUpDown className="ml-auto size-4" />
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-              side={isMobile ? 'bottom' : 'top'}
-              align="start"
-              sideOffset={4}
-            >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+    <>
+      <Dialog open={showNewTeamDialog} onOpenChange={setShowNewTeamDialog}>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback className="rounded-lg">
@@ -199,124 +233,182 @@ export function NavUserWithTeams({
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs">{user.email}</span>
                   </div>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              {/* Teams Section */}
-              {personalAccount && (
-                <>
-                  <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    Personal Account
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    key={personalAccount.account_id}
-                    onClick={() =>
-                      handleTeamSelect({
-                        name: personalAccount.name,
-                        logo: Command,
-                        plan: 'Personal',
-                        account_id: personalAccount.account_id,
-                        slug: personalAccount.slug,
-                        personal_account: true,
-                      })
-                    }
-                    className="gap-2 p-2"
-                  >
-                    <div className="flex size-6 items-center justify-center rounded-xs border">
-                      <Command className="size-4 shrink-0" />
+                  <ChevronsUpDown className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                side={isMobile ? 'bottom' : 'top'}
+                align="start"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback className="rounded-lg">
+                        {getInitials(user.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{user.name}</span>
+                      <span className="truncate text-xs">{user.email}</span>
                     </div>
-                    {personalAccount.name}
-                    <DropdownMenuShortcut>⌘1</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </>
-              )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
 
-              {teamAccounts?.length > 0 && (
-                <>
-                  <DropdownMenuLabel className="text-muted-foreground text-xs mt-2">
-                    Teams
-                  </DropdownMenuLabel>
-                  {teamAccounts.map((team, index) => (
+                {/* Teams Section */}
+                {personalAccount && (
+                  <>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                      Personal Account
+                    </DropdownMenuLabel>
                     <DropdownMenuItem
-                      key={team.account_id}
+                      key={personalAccount.account_id}
                       onClick={() =>
                         handleTeamSelect({
-                          name: team.name,
-                          logo: AudioWaveform,
-                          plan: 'Team',
-                          account_id: team.account_id,
-                          slug: team.slug,
-                          personal_account: false,
+                          name: personalAccount.name,
+                          logo: Command,
+                          plan: 'Personal',
+                          account_id: personalAccount.account_id,
+                          slug: personalAccount.slug,
+                          personal_account: true,
                         })
                       }
                       className="gap-2 p-2"
                     >
                       <div className="flex size-6 items-center justify-center rounded-xs border">
-                        <AudioWaveform className="size-4 shrink-0" />
+                        <Command className="size-4 shrink-0" />
                       </div>
-                      {team.name}
-                      <DropdownMenuShortcut>⌘{index + 2}</DropdownMenuShortcut>
+                      {personalAccount.name}
+                      <DropdownMenuShortcut>⌘1</DropdownMenuShortcut>
                     </DropdownMenuItem>
-                  ))}
-                </>
-              )}
+                  </>
+                )}
 
-              {/* <DropdownMenuSeparator />
-              <DialogTrigger asChild>
-                <DropdownMenuItem 
-                  className="gap-2 p-2"
-                  onClick={() => {
-                    setShowNewTeamDialog(true)
-                  }}
-                >
-                  <div className="bg-background flex size-6 items-center justify-center rounded-md border">
-                    <Plus className="size-4" />
-                  </div>
-                  <div className="text-muted-foreground font-medium">Add team</div>
+                {/* Delete All Conversations Button - only show for personal account */}
+                {personalAccount && threads.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleDeleteAllConversations}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                      Delete All Conversations
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {teamAccounts?.length > 0 && (
+                  <>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs mt-2">
+                      Teams
+                    </DropdownMenuLabel>
+                    {teamAccounts.map((team, index) => (
+                      <DropdownMenuItem
+                        key={team.account_id}
+                        onClick={() =>
+                          handleTeamSelect({
+                            name: team.name,
+                            logo: AudioWaveform,
+                            plan: 'Team',
+                            account_id: team.account_id,
+                            slug: team.slug,
+                            personal_account: false,
+                          })
+                        }
+                        className="gap-2 p-2"
+                      >
+                        <div className="flex size-6 items-center justify-center rounded-xs border">
+                          <AudioWaveform className="size-4 shrink-0" />
+                        </div>
+                        {team.name}
+                        <DropdownMenuShortcut>⌘{index + 2}</DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+
+                {/* <DropdownMenuSeparator />
+                <DialogTrigger asChild>
+                  <DropdownMenuItem 
+                    className="gap-2 p-2"
+                    onClick={() => {
+                      setShowNewTeamDialog(true)
+                    }}
+                  >
+                    <div className="bg-background flex size-6 items-center justify-center rounded-md border">
+                      <Plus className="size-4" />
+                    </div>
+                    <div className="text-muted-foreground font-medium">Add team</div>
+                  </DropdownMenuItem>
+                </DialogTrigger> */}
+                <DropdownMenuSeparator />
+
+                {/* User Settings Section */}
+                <DropdownMenuGroup>
+                  {/* <DropdownMenuItem asChild>
+                    <Link href="/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem> */}
+                  <DropdownMenuItem
+                    onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      <span>Theme</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className='text-destructive focus:text-destructive focus:bg-destructive/10' onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 text-destructive" />
+                  Log out
                 </DropdownMenuItem>
-              </DialogTrigger> */}
-              <DropdownMenuSeparator />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
 
-              {/* User Settings Section */}
-              <DropdownMenuGroup>
-                {/* <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem> */}
-                <DropdownMenuItem
-                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                >
-                  <div className="flex items-center gap-2">
-                    <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                    <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                    <span>Theme</span>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className='text-destructive focus:text-destructive focus:bg-destructive/10' onClick={handleLogout}>
-                <LogOut className="h-4 w-4 text-destructive" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
+        <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-card-bg dark:bg-background-secondary rounded-2xl shadow-custom">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Create a new team
+            </DialogTitle>
+            <DialogDescription className="text-foreground/70">
+              Create a team to collaborate with others.
+            </DialogDescription>
+          </DialogHeader>
+          <NewTeamForm />
+        </DialogContent>
+      </Dialog>
 
-      <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-card-bg dark:bg-background-secondary rounded-2xl shadow-custom">
-        <DialogHeader>
-          <DialogTitle className="text-foreground">
-            Create a new team
-          </DialogTitle>
-          <DialogDescription className="text-foreground/70">
-            Create a team to collaborate with others.
-          </DialogDescription>
-        </DialogHeader>
-        <NewTeamForm />
-      </DialogContent>
-    </Dialog>
+      {/* Delete All Conversations Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent className="bg-white dark:bg-background">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Delete All Conversations</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all {threads.length} conversations? This action cannot be undone and will permanently remove all your chat history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteAllConversations}
+              disabled={isDeletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingAll ? 'Deleting...' : 'Delete All'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
