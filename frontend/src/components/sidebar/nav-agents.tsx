@@ -44,6 +44,7 @@ import { useDeleteOperation } from '@/contexts/DeleteOperationContext'
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ThreadWithProject } from '@/hooks/react-query/sidebar/use-sidebar';
+import { useActiveThreadStatuses } from '@/hooks/react-query/sidebar/use-active-threads';
 import { processThreadsWithProjects, useDeleteMultipleThreads, useDeleteThread, useProjects, useThreads } from '@/hooks/react-query/sidebar/use-sidebar';
 import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
 
@@ -84,6 +85,9 @@ export function NavAgents() {
   const combinedThreads: ThreadWithProject[] =
     !isProjectsLoading && !isThreadsLoading ?
       processThreadsWithProjects(threads, projects) : [];
+
+  // Determine active status for each thread (running agent)
+  const activeStatusMap = useActiveThreadStatuses(combinedThreads.map(t => t.threadId));
 
   const handleDeletionProgress = (completed: number, total: number) => {
     const percentage = (completed / total) * 100;
@@ -435,6 +439,7 @@ export function NavAgents() {
               // Check if this thread is currently active
               const isActive = pathname?.includes(thread.threadId) || false;
               const isThreadLoading = loadingThreadId === thread.threadId;
+              const isRunning = activeStatusMap[thread.threadId] === true;
               const isSelected = selectedThreads.has(thread.threadId);
 
               return (
@@ -459,7 +464,15 @@ export function NavAgents() {
                               {isThreadLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <MessagesSquare className="h-4 w-4" />
+                                <div className="relative">
+                                  <MessagesSquare className="h-4 w-4" />
+                                  {isRunning && (
+                                    <span
+                                      title="active"
+                                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-green-500"
+                                    />
+                                  )}
+                                </div>
                               )}
                               <span>{thread.projectName}</span>
                             </Link>
@@ -493,10 +506,18 @@ export function NavAgents() {
                             ) : (
                               <>
                                 {/* MessagesSquare icon - hidden on hover if not selected */}
-                                <MessagesSquare
+                                <div className="relative">
+                                  <MessagesSquare
                                   className={`h-4 w-4 transition-opacity duration-150 ${isSelected ? 'opacity-0' : 'opacity-100 group-hover/icon:opacity-0'
                                     }`}
-                                />
+                                  />
+                                  {isRunning && !isSelected && (
+                                    <span
+                                      title="active"
+                                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-green-500"
+                                    />
+                                  )}
+                                </div>
 
                                 {/* Checkbox - appears on hover or when selected */}
                                 <div

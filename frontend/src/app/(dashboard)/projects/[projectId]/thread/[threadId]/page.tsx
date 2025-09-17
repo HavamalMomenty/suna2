@@ -184,6 +184,14 @@ export default function ThreadPage({
       case 'failed':
         setAgentStatus('idle');
         setAgentRunId(null);
+        // Notify sidebar to refresh activity indicator immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('thread-activity', {
+              detail: { threadId, status: 'idle' },
+            }),
+          );
+        }
         setAutoOpenedPanel(false);
 
         if (
@@ -203,6 +211,13 @@ export default function ThreadPage({
         break;
       case 'streaming':
         setAgentStatus('running');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('thread-activity', {
+              detail: { threadId, status: 'running' },
+            }),
+          );
+        }
         break;
     }
   }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel]);
@@ -338,6 +353,14 @@ export default function ThreadPage({
       } catch (error) {
         console.error('Error stopping agent:', error);
       }
+    }
+    // Also notify sidebar instantly
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('thread-activity', {
+          detail: { threadId, status: 'idle' },
+        }),
+      );
     }
   }, [stopStreaming, agentRunId, stopAgentMutation, agentRunsQuery, setAgentStatus]);
 
