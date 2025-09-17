@@ -113,7 +113,6 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkfl
     e.preventDefault();
     e.stopPropagation();
     if (onDoubleClickWorkflow) {
-      toast.success(`Running ${workflow.name}...`);
       onDoubleClickWorkflow(workflow);
     }
   };

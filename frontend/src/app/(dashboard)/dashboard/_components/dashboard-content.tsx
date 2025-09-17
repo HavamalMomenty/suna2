@@ -36,6 +36,8 @@ import { downloadWorkflowFiles } from '@/lib/workflow-utils';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
+import ConfigureJobDialog from '@/components/workflows/ConfigureJobDialog';
+import type { Workflow } from '@/lib/api';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -44,6 +46,8 @@ export function DashboardContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(false);
   const [workflowLoadingMessage, setWorkflowLoadingMessage] = useState('');
+  const [configureOpen, setConfigureOpen] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(null);
@@ -95,6 +99,7 @@ export function DashboardContent() {
       reasoning_effort?: string;
       stream?: boolean;
       enable_context_manager?: boolean;
+      extraFiles?: File[];
     },
   ) => {
     if (
@@ -106,7 +111,10 @@ export function DashboardContent() {
     setIsSubmitting(true);
 
     try {
-      const files = chatInputRef.current?.getPendingFiles() || [];
+      const files = [
+        ...((chatInputRef.current?.getPendingFiles() || [])),
+        ...((options?.extraFiles || [])),
+      ];
       localStorage.removeItem(PENDING_PROMPT_KEY);
 
       const formData = new FormData();
@@ -150,9 +158,14 @@ export function DashboardContent() {
     }
   };
 
-  const handleWorkflowExecution = async (workflow: any) => {
+  const openConfigure = (workflow: Workflow) => {
+    setSelectedWorkflow(workflow);
+    setConfigureOpen(true);
+  };
+
+  const handleConfiguredRun = async ({ workflow, promptText, files, background }: { workflow: Workflow; promptText: string; files: File[]; background: boolean }) => {
     try {
-      console.log('🔄 Workflow execution started:', workflow);
+      console.log('🔄 Workflow execution started (configured):', workflow);
       console.log('📝 Master prompt:', workflow.master_prompt);
       
       // Show loading overlay with spinner
@@ -194,19 +207,27 @@ export function DashboardContent() {
           toast.success(`Loaded ${downloadedFiles.length} file(s) from workflow`);
           
           // Wait a moment for files to be properly added to the chat input
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       }
       
-      // Directly trigger the conversation with the master prompt
-      console.log('🚀 Calling handleSubmit with master prompt:', workflow.master_prompt);
+      // Directly trigger the conversation with the composed prompt
+      console.log('🚀 Calling handleSubmit with master prompt + user prompt');
       setWorkflowLoadingMessage('Launching workflow...');
       
       // Debug: Check if files are in chat input before submission
       const pendingFiles = chatInputRef.current?.getPendingFiles() || [];
       console.log('📋 Files in chat input before submission:', pendingFiles.length, pendingFiles.map(f => f.name));
       
-      await handleSubmit(workflow.master_prompt || '');
+      const descriptionText = workflow.description ? `The workflow with description\n\n"${workflow.description}"\n\n` : '';
+      const promptLine = promptText ? `the user input "${promptText}" for this job\n` : '';
+      const composed = `${descriptionText}${promptLine}\n${workflow.master_prompt || ''}`.trim();
+      await handleSubmit(composed, { extraFiles: files });
+      
+      // If background, do not navigate; rely on sidebar state. Prevent pushing by clearing initiatedThreadId
+      if (background) {
+        setInitiatedThreadId(null);
+      }
       
     } catch (error) {
       console.error('❌ Error executing workflow:', error);
@@ -215,6 +236,7 @@ export function DashboardContent() {
       // Hide loading overlay
       setIsWorkflowLoading(false);
       setWorkflowLoadingMessage('');
+      setConfigureOpen(false);
     }
   };
 
@@ -305,8 +327,8 @@ export function DashboardContent() {
 
           <Examples 
             onSelectPrompt={setInputValue} 
-            onSelectWorkflow={handleWorkflowExecution}
-            onDoubleClickWorkflow={handleWorkflowExecution}
+            onSelectWorkflow={openConfigure}
+            onDoubleClickWorkflow={openConfigure}
           />
           </div>
         </div>
@@ -320,6 +342,12 @@ export function DashboardContent() {
           isOpen={!!billingError}
         />
       </div>
+      <ConfigureJobDialog
+        open={configureOpen}
+        workflow={selectedWorkflow}
+        onClose={() => setConfigureOpen(false)}
+        onRun={handleConfiguredRun}
+      />
     </>
   );
 }
