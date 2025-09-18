@@ -11,4 +11,5 @@ export const threadKeys = createQueryKeys({
   all: ['threads'] as const,
   lists: () => [...threadKeys.all, 'list'] as const,
   byProject: (projectId: string) => [...threadKeys.all, 'by-project', projectId] as const,
+  activeStatuses: () => [...threadKeys.all, 'active-statuses'] as const,
 });

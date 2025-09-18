@@ -219,9 +219,8 @@ export function DashboardContent() {
       const pendingFiles = chatInputRef.current?.getPendingFiles() || [];
       console.log('📋 Files in chat input before submission:', pendingFiles.length, pendingFiles.map(f => f.name));
       
-      const descriptionText = workflow.description ? `The workflow with description\n\n"${workflow.description}"\n\n` : '';
-      const promptLine = promptText ? `the user input "${promptText}" for this job\n` : '';
-      const composed = `${descriptionText}${promptLine}\n${workflow.master_prompt || ''}`.trim();
+      const promptLine = promptText ? `The user input "${promptText}" for job with description "${workflow.description || 'no description'}"\n\n` : '';
+      const composed = `${promptLine}${workflow.master_prompt || ''}`.trim();
       await handleSubmit(composed, { extraFiles: files });
       
       // If background, do not navigate; rely on sidebar state. Prevent pushing by clearing initiatedThreadId
@@ -345,7 +344,7 @@ export function DashboardContent() {
       <ConfigureJobDialog
         open={configureOpen}
         workflow={selectedWorkflow}
-        onClose={() => setConfigureOpen(false)}
+        onOpenChange={setConfigureOpen}
         onRun={handleConfiguredRun}
       />
     </>

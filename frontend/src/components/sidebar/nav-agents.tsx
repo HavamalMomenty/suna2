@@ -44,9 +44,9 @@ import { useDeleteOperation } from '@/contexts/DeleteOperationContext'
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ThreadWithProject } from '@/hooks/react-query/sidebar/use-sidebar';
-import { useActiveThreadStatuses } from '@/hooks/react-query/sidebar/use-active-threads';
 import { processThreadsWithProjects, useDeleteMultipleThreads, useDeleteThread, useProjects, useThreads } from '@/hooks/react-query/sidebar/use-sidebar';
 import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
+import { useActiveThreadStatuses } from '@/hooks/react-query/sidebar/use-active-threads';
 
 export function NavAgents() {
   const { isMobile, state } = useSidebar()
@@ -87,7 +87,11 @@ export function NavAgents() {
       processThreadsWithProjects(threads, projects) : [];
 
   // Determine active status for each thread (running agent)
-  const activeStatusMap = useActiveThreadStatuses(combinedThreads.map(t => t.threadId));
+  const { activeThreads: activeStatusMap } = useActiveThreadStatuses();
+  
+  // Debug: Log active status map
+  console.log('🔍 Active status map:', activeStatusMap);
+  console.log('🔍 Combined threads:', combinedThreads.map(t => ({ threadId: t.threadId, isRunning: activeStatusMap[t.threadId] })));
 
   const handleDeletionProgress = (completed: number, total: number) => {
     const percentage = (completed / total) * 100;
@@ -468,7 +472,7 @@ export function NavAgents() {
                                   <MessagesSquare className="h-4 w-4" />
                                   {isRunning && (
                                     <span
-                                      title="active"
+                                      title="in progress"
                                       className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-green-500"
                                     />
                                   )}
@@ -513,7 +517,7 @@ export function NavAgents() {
                                   />
                                   {isRunning && !isSelected && (
                                     <span
-                                      title="active"
+                                      title="in progress"
                                       className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-green-500"
                                     />
                                   )}
