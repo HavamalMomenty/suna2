@@ -61,7 +61,7 @@ interface WorkflowBuilderModalProps {
   onWorkflowSaved?: () => void;
   workflowId?: string;
   mode: 'create' | 'edit' | 'view';
-  projectId: string;
+  projectId: string; // Can be empty string if no project exists yet
 }
 
 export function WorkflowBuilderModal({ 
@@ -167,10 +167,22 @@ export function WorkflowBuilderModal({
 
   const handleSave = async () => {
     try {
+      let currentProjectId = projectId;
+      
+      // If no project exists, create one first
+      if (!currentProjectId || currentProjectId === '') {
+        const { createProject } = await import('@/lib/api');
+        const newProject = await createProject({
+          name: 'My First Project',
+          description: 'Your default project to get started with workflows and conversations'
+        });
+        currentProjectId = newProject.id;
+      }
+      
       if (mode === 'create') {
         await createWorkflow.mutateAsync({
           workflow_data: formData,
-          project_id: projectId,
+          project_id: currentProjectId,
           files: pendingFiles
         });
       } else if (workflowId) {

@@ -40,3 +40,13 @@ ADD CONSTRAINT accounts_primary_owner_user_id_fkey
 FOREIGN KEY (primary_owner_user_id) 
 REFERENCES auth.users(id) 
 ON DELETE CASCADE;
+
+
+ALTER TABLE workflows 
+DROP CONSTRAINT workflows_created_by_fkey;
+
+ALTER TABLE workflows 
+ADD CONSTRAINT workflows_created_by_fkey 
+FOREIGN KEY (created_by) 
+REFERENCES auth.users(id) 
+ON DELETE CASCADE;

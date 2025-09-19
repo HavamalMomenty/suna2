@@ -72,11 +72,11 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkfl
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
 
-  // Fetch workflows - always enabled to load default workflows
+  // Fetch workflows
   const { data: workflows = [], isLoading, refetch } = useQuery({
     queryKey: ['workflows', projectId],
     queryFn: () => getWorkflows(projectId),
-    enabled: true, // Always enabled to load default workflows for new users
+    enabled: true,
   });
 
   // Check if current user is admin
@@ -361,17 +361,15 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkfl
       {/* Custom Workflows Section */}
       {renderWorkflowSection(customWorkflows, "Custom Workflows", true)}
 
-      {/* Workflow Builder Modal */}
-      {projectId && (
-        <WorkflowBuilderModal 
-          isOpen={builderModalOpen} 
-          workflowId={builderWorkflowId} 
-          mode={builderMode} 
-          projectId={projectId}
-          onClose={handleCloseBuilderModal}
-          onWorkflowSaved={handleWorkflowSaved}
-        />
-      )}
+      {/* Workflow Builder Modal - always render, will handle project creation internally */}
+      <WorkflowBuilderModal 
+        isOpen={builderModalOpen} 
+        workflowId={builderWorkflowId} 
+        mode={builderMode} 
+        projectId={projectId || ''} // Pass empty string if no projectId
+        onClose={handleCloseBuilderModal}
+        onWorkflowSaved={handleWorkflowSaved}
+      />
     </div>
   );
 };
