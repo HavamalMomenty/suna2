@@ -182,9 +182,41 @@ export function DashboardContent() {
         throw new Error('No access token available');
       }
 
-      // Note: Workflow files are automatically transferred to /workspace/utility/ by the backend
-      // during workflow execution, so we don't need to download and add them to chat input
-      console.log('📄 Workflow files will be automatically available in /workspace/utility/ during execution');
+      // Fetch and download workflow files to add to chat input
+      setWorkflowLoadingMessage('Loading workflow files...');
+      
+      try {
+        const filesResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/workflows/${workflow.id}/files`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (filesResponse.ok) {
+          const workflowFiles = await filesResponse.json();
+          console.log('Workflow files found:', workflowFiles);
+
+          if (workflowFiles && workflowFiles.length > 0) {
+            setWorkflowLoadingMessage(`Downloading ${workflowFiles.length} file(s)...`);
+            
+            const downloadedFiles = await downloadWorkflowFiles(workflow.id, workflowFiles);
+            
+            // Add files to chat input
+            downloadedFiles.forEach(file => {
+              chatInputRef.current?.addFile(file);
+            });
+            
+            console.log('✔ Added', downloadedFiles.length, 'files to chat input');
+            toast.success(`Loaded ${downloadedFiles.length} file(s) from workflow`);
+            
+            // Small delay to ensure files are processed
+            await new Promise(resolve => setTimeout(resolve, 150));
+          }
+        }
+      } catch (fileError) {
+        console.warn('Failed to load workflow files:', fileError);
+        // Continue execution even if file loading fails
+      }
       
       // Directly trigger the conversation with the composed prompt
       console.log('🚀 Calling handleSubmit with master prompt + user prompt');
