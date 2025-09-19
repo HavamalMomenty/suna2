@@ -310,10 +310,19 @@ async def make_llm_api_call(
             logger.debug(f"Attempt {attempt + 1}/{MAX_RETRIES}")
             # logger.debug(f"API request parameters: {json.dumps(params, indent=2)}")
 
-            response = await litellm.acompletion(**params)
+            response = await asyncio.wait_for(litellm.acompletion(**params), timeout=300)
             logger.debug(f"Successfully received API response from {model_name}")
             logger.debug(f"Response: {response}")
             return response
+
+        except asyncio.TimeoutError:
+            error_msg = f"LLM API call timed out after 300 seconds (attempt {attempt + 1}/{MAX_RETRIES})"
+            logger.error(error_msg)
+            last_error = asyncio.TimeoutError(error_msg)
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (2 ** attempt))
+            else:
+                raise LLMError(error_msg)
 
         except (litellm.exceptions.RateLimitError, OpenAIError, json.JSONDecodeError) as e:
             last_error = e

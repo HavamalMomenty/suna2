@@ -39,20 +39,8 @@ export const Examples = ({
     }
   };
 
-  if (!projectId) {
-    return (
-      <div className="w-full max-w-3xl mx-auto px-4">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-xs text-muted-foreground font-medium">Workflows</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-sidebar animate-pulse rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Always show workflows, even without projectId (for default workflows)
+  // The WorkflowCards component will handle loading default workflows
 
   return (
     <WorkflowCards 

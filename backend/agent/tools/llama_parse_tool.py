@@ -58,7 +58,7 @@ class LlamaParseDocumentTool(SandboxToolsBase):
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "Path to the document file in the sandbox workspace. Example: '/workspace/documents/report.pdf'"
+                        "description": "Path to the document file in the sandbox workspace. Example: '/workspace/report.pdf'"
                     }
                 },
                 "required": ["file_path"]

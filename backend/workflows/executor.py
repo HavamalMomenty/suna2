@@ -2,6 +2,7 @@ import asyncio
 import uuid
 import json
 import os
+import inspect
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, AsyncGenerator
 from .models import WorkflowDefinition, WorkflowExecution
@@ -45,6 +46,9 @@ class WorkflowExecutor:
             
             await self._ensure_project_has_sandbox(project_id)
             
+            # Transfer workflow files to utility folder
+            await self._transfer_workflow_files_to_utility(workflow.id, project_id)
+            
             await self._ensure_workflow_thread_exists(thread_id, project_id, workflow, variables)
 
             if not workflow.steps:
@@ -61,6 +65,13 @@ class WorkflowExecutor:
                     variables_text += f"- **{key}**: {value}\n"
                 variables_text += "\nUse these variables as needed during workflow execution.\n"
                 system_prompt += variables_text
+
+            # Add utility folder information to system prompt
+            utility_info = "\n\n## File Organization\n"
+            utility_info += "- Workflow specification files are available in /workspace/utility/ directory\n"
+            utility_info += "- User-uploaded files (configure job files) are available in /workspace/ directory\n"
+            utility_info += "- Use relative paths from /workspace/ for all file operations\n"
+            system_prompt += utility_info
 
             enabled_tools = self._extract_enabled_tools_from_workflow(workflow)
             
@@ -563,4 +574,98 @@ class WorkflowExecutor:
                 logger.error(f"Error cleaning up sandbox {sandbox_id}: {str(cleanup_e)}")
             raise Exception("Failed to update project with sandbox information")
         
-        logger.info(f"Successfully created and configured sandbox {sandbox_id} for workflow project {project_id}") 
+        logger.info(f"Successfully created and configured sandbox {sandbox_id} for workflow project {project_id}")
+
+    async def _transfer_workflow_files_to_utility(self, workflow_id: str, project_id: str):
+        """Transfer workflow files to /workspace/utility/ directory in the sandbox."""
+        try:
+            client = await self.db.client
+            
+            # Get project sandbox info
+            project_result = await client.table('projects').select('sandbox').eq('project_id', project_id).execute()
+            if not project_result.data:
+                logger.error(f"Project {project_id} not found")
+                return
+            
+            sandbox_info = project_result.data[0].get('sandbox', {})
+            sandbox_id = sandbox_info.get('id')
+            if not sandbox_id:
+                logger.error(f"No sandbox found for project {project_id}")
+                return
+            
+            # Get workflow files from database
+            files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
+            if not files_result.data:
+                logger.info(f"No workflow files found for workflow {workflow_id}")
+                return
+            
+            # Get sandbox instance
+            from sandbox.sandbox import get_or_start_sandbox
+            sandbox = await get_or_start_sandbox(sandbox_id)
+            
+            # Create utility directory if it doesn't exist
+            utility_dir = "/workspace/utility"
+            try:
+                if hasattr(sandbox.fs, 'create_folder'):
+                    sandbox.fs.create_folder(utility_dir, "755")
+                    logger.info(f"Created utility directory: {utility_dir}")
+                else:
+                    # Fallback: Create directory by creating a temporary file and then removing it
+                    temp_file = f"{utility_dir}/.temp"
+                    sandbox.fs.upload_file(b"", temp_file)
+                    sandbox.fs.delete_file(temp_file)
+                    logger.info(f"Created utility directory (fallback method): {utility_dir}")
+            except Exception as e:
+                logger.warning(f"Utility directory may already exist or creation failed: {e}")
+            
+            # Transfer each workflow file to utility directory
+            successful_transfers = 0
+            for file_data in files_result.data:
+                try:
+                    file_id = file_data['id']
+                    filename = file_data['filename']
+                    file_path = file_data['file_path']
+                    
+                    # Download file content from storage
+                    from services.supabase import get_supabase_client
+                    supabase = get_supabase_client()
+                    
+                    # Get file from storage
+                    file_response = supabase.storage.from_('workflow-files').download(file_path)
+                    if not file_response:
+                        logger.error(f"Failed to download file {filename} from storage")
+                        continue
+                    
+                    # Upload to utility directory in sandbox
+                    safe_filename = filename.replace('/', '_').replace('\\', '_')
+                    target_path = f"{utility_dir}/{safe_filename}"
+                    
+                    if hasattr(sandbox.fs, 'upload_file'):
+                        if inspect.iscoroutinefunction(sandbox.fs.upload_file):
+                            await sandbox.fs.upload_file(file_response, target_path)
+                        else:
+                            sandbox.fs.upload_file(file_response, target_path)
+                        
+                        # Verify file was uploaded
+                        try:
+                            files_in_dir = sandbox.fs.list_files(utility_dir)
+                            file_names = [f.name for f in files_in_dir]
+                            if safe_filename in file_names:
+                                successful_transfers += 1
+                                logger.info(f"Successfully transferred workflow file {filename} to {target_path}")
+                            else:
+                                logger.error(f"Failed to verify transfer of {filename}")
+                        except Exception as verify_error:
+                            logger.error(f"Error verifying transfer of {filename}: {verify_error}")
+                    else:
+                        logger.error(f"Sandbox does not support file upload for {filename}")
+                        
+                except Exception as file_error:
+                    logger.error(f"Error transferring workflow file {file_data.get('filename', 'unknown')}: {file_error}")
+                    continue
+            
+            logger.info(f"Transferred {successful_transfers}/{len(files_result.data)} workflow files to utility directory")
+            
+        except Exception as e:
+            logger.error(f"Error transferring workflow files to utility directory: {e}")
+            # Don't raise the exception - workflow execution should continue even if file transfer fails 

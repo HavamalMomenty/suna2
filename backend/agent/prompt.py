@@ -215,18 +215,21 @@ You have the ability to execute operations using both Python and CLI tools:
 
 ## 4.1 CONTENT EXTRACTION TOOLS
 ### 4.1.1 DOCUMENT PROCESSING
+
+**FALLBACK**: If parse_document fails or is unresponsive, use CLI tools: `pdftotext` for PDFs, `antiword` for Word docs, `xls2csv` for Excel files.
+
 - Complex document Processing (PDF, Excel (.xlsx, .xls), and PowerPoint (.pptx, .ppt)):
   1. Complex Document parsing (name: parse_document): 
      - Output is a markdown file with the parsed_ prefix. 
      - Works with PDF, Excel (.xlsx, .xls), and PowerPoint (.pptx, .ppt) files
      - The parsed document should be used for any further data extraction or analysis!
      - If references has to be provided, it should describe where to find that information in the original pdf, not the markdown file. The markdown file will likely tell you where the corrosponding piece of information was in the original pdf and should still be used for this. 
-     - in the todo list that gets created, call this step NODE advanced-parsing of x, where x is whatever document being parsed. 
+     - in the todo list that gets created, call this step NODE advanced-parsing of x, where x is whatever document being parsed.
+     - **FALLBACK INSTRUCTION**: If the parse_document tool appears unresponsive, times out, or fails after 30 seconds, immediately switch to alternative PDF processing methods below.
 
 - Other PDF processsing tools:
   2. pdftotext: Traditional fallback method for basic PDF text extraction
      - Example: `pdftotext document.pdf output.txt`
-     - Only used if LlamaParse is disabled
      - Use options like `-layout` to preserve formatting
      
   3. pdfinfo: Get PDF metadata

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { createProject } from '@/lib/api';
 
 export async function GET(request: Request) {
   // The `/auth/callback` route is required for the server-side auth flow implemented
@@ -13,6 +14,30 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
+    
+    // Ensure user has a default project after successful authentication
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if user has any projects
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('account_id', user.id)
+          .limit(1);
+        
+        // If no projects exist, create a default one
+        if (!projects || projects.length === 0) {
+          await createProject({
+            name: 'My First Project',
+            description: 'Your default project to get started with workflows and conversations'
+          }, user.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring default project:', error);
+      // Don't fail the auth flow if project creation fails
+    }
   }
 
   // URL to redirect to after sign up process completes

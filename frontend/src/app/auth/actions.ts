@@ -51,6 +51,31 @@ export async function signIn(prevState: any, formData: FormData) {
     return { message: error.message || 'Could not authenticate user' };
   }
 
+  // Ensure user has a default project after successful sign in
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Check if user has any projects
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('account_id', user.id)
+        .limit(1);
+      
+      // If no projects exist, create a default one
+      if (!projects || projects.length === 0) {
+        const { createProject } = await import('@/lib/api');
+        await createProject({
+          name: 'My First Project',
+          description: 'Your default project to get started with workflows and conversations'
+        }, user.id);
+      }
+    }
+  } catch (error) {
+    console.error('Error ensuring default project:', error);
+    // Don't fail the sign in flow if project creation fails
+  }
+
   // Use client-side navigation instead of server-side redirect
   return { success: true, redirectTo: returnUrl || '/dashboard' };
 }
@@ -80,7 +105,7 @@ export async function signUp(prevState: any, formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?returnUrl=${returnUrl}`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_URL}/auth/callback?returnUrl=${returnUrl}`,
     },
   });
 

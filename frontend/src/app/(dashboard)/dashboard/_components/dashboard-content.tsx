@@ -182,34 +182,9 @@ export function DashboardContent() {
         throw new Error('No access token available');
       }
 
-      setWorkflowLoadingMessage('Loading workflow files...');
-      const filesResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/workflows/${workflow.id}/files`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (filesResponse.ok) {
-        const workflowFiles = await filesResponse.json();
-        console.log('📄 Workflow files found:', workflowFiles);
-        
-        if (workflowFiles && workflowFiles.length > 0) {
-          setWorkflowLoadingMessage(`Downloading ${workflowFiles.length} file(s)...`);
-          // Download workflow files
-          const downloadedFiles = await downloadWorkflowFiles(workflow.id, workflowFiles);
-          
-          // Add files to the chat input
-          downloadedFiles.forEach(file => {
-            chatInputRef.current?.addFile(file);
-          });
-          
-          console.log('✅ Added', downloadedFiles.length, 'files to chat input');
-          toast.success(`Loaded ${downloadedFiles.length} file(s) from workflow`);
-          
-          // Wait a moment for files to be properly added to the chat input
-          await new Promise(resolve => setTimeout(resolve, 150));
-        }
-      }
+      // Note: Workflow files are automatically transferred to /workspace/utility/ by the backend
+      // during workflow execution, so we don't need to download and add them to chat input
+      console.log('📄 Workflow files will be automatically available in /workspace/utility/ during execution');
       
       // Directly trigger the conversation with the composed prompt
       console.log('🚀 Calling handleSubmit with master prompt + user prompt');

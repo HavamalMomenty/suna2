@@ -72,11 +72,11 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkfl
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
 
-  // Fetch workflows
+  // Fetch workflows - always enabled to load default workflows
   const { data: workflows = [], isLoading, refetch } = useQuery({
     queryKey: ['workflows', projectId],
     queryFn: () => getWorkflows(projectId),
-    enabled: !!projectId,
+    enabled: true, // Always enabled to load default workflows for new users
   });
 
   // Check if current user is admin
