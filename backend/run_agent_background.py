@@ -511,9 +511,11 @@ async def run_workflow_background(
 
         if deterministic:
             executor = deterministic_executor
+            logger.info(f"🔍 BJARKE DEBUG: Using deterministic executor for workflow {execution_id}")
             logger.info(f"Using deterministic executor for workflow {execution_id}")
         else:
             executor = workflow_executor
+            logger.info(f"🔍 BJARKE DEBUG: Using legacy executor for workflow {execution_id}")
             logger.info(f"Using legacy executor for workflow {execution_id}")
         
         async for response in executor.execute_workflow(

@@ -10,6 +10,8 @@ import jwt
 from pydantic import BaseModel
 import tempfile
 import os
+import base64
+import inspect
 
 from agentpress.thread_manager import ThreadManager
 from services.supabase import DBConnection
@@ -962,6 +964,61 @@ async def generate_and_update_project_name(project_id: str, prompt: str):
         # No need to disconnect DBConnection singleton instance here
         logger.info(f"Finished background naming task for project: {project_id}")
 
+async def upload_workflow_template_files(sandbox, workflow_id: str, user_id: str, db: DBConnection):
+    """Upload workflow template files to /workspace/utility/"""
+    logger.info(f"Bjarke logs: 🚀 Starting upload_workflow_template_files for workflow_id: {workflow_id}, user_id: {user_id}")
+    try:
+        client = await db.client
+        
+        # Get workflow files from the database
+        files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
+        
+        if not files_result.data:
+            logger.info(f"No workflow template files found for workflow {workflow_id}")
+            return
+        
+        logger.info(f"Found {len(files_result.data)} workflow template files for workflow {workflow_id}")
+        
+        # Download files from Supabase storage (same approach as workflow executor)
+        supabase = await db.client
+        
+        successful_transfers = 0
+        for file_data in files_result.data:
+            try:
+                file_id = file_data['id']
+                filename = file_data['filename']
+                file_path = file_data['file_path']
+                logger.info(f"Bjarke logs: Found filepath {file_path} for file {filename}")
+                # Download file content from storage
+                file_response = await supabase.storage.from_('workflow-files').download(file_path)
+                if not file_response:
+                    logger.error(f"Failed to download file {filename} from storage")
+                    continue
+                
+                # Upload to utility directory in sandbox
+                safe_filename = filename.replace('/', '_').replace('\\', '_')
+                target_path = f"/workspace/utility/{safe_filename}"
+                
+                if hasattr(sandbox.fs, 'upload_file'):
+                    if inspect.iscoroutinefunction(sandbox.fs.upload_file):
+                        await sandbox.fs.upload_file(file_response, target_path)
+                    else:
+                        sandbox.fs.upload_file(file_response, target_path)
+                    
+                    successful_transfers += 1
+                    logger.info(f"Successfully uploaded workflow template file {filename} to {target_path}")
+                else:
+                    logger.error(f"Sandbox does not support file upload for {filename}")
+                    
+            except Exception as file_error:
+                logger.error(f"Error uploading workflow template file {file_data.get('filename', 'unknown')}: {file_error}")
+                continue
+        
+        logger.info(f"Successfully uploaded {successful_transfers}/{len(files_result.data)} workflow template files to utility directory")
+                
+    except Exception as e:
+        logger.error(f"Error uploading workflow template files: {e}")
+
 @router.post("/agent/initiate", response_model=InitiateAgentResponse)
 async def initiate_agent_with_files(
     prompt: str = Form(...),
@@ -974,6 +1031,8 @@ async def initiate_agent_with_files(
     files: List[UploadFile] = File(default=[]),
     is_agent_builder: Optional[bool] = Form(False),
     target_agent_id: Optional[str] = Form(None),
+    is_workflow_execution: Optional[bool] = Form(False),
+    workflow_id: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Initiate a new agent session with optional file attachments."""
@@ -1112,6 +1171,17 @@ async def initiate_agent_with_files(
                 target_agent_id=target_agent_id,
             )
         
+        # Store workflow metadata if this is a workflow execution
+        if is_workflow_execution and workflow_id:
+            thread_data["metadata"] = {
+                "is_workflow_execution": True,
+                "workflow_id": workflow_id
+            }
+            logger.info(f"Storing workflow metadata in thread: workflow_id={workflow_id}")
+            structlog.contextvars.bind_contextvars(
+                workflow_id=workflow_id,
+            )
+        
         thread = await client.table('threads').insert(thread_data).execute()
         thread_id = thread.data[0]['thread_id']
         logger.info(f"Created new thread: {thread_id}")
@@ -1119,16 +1189,74 @@ async def initiate_agent_with_files(
         # Trigger Background Naming Task
         asyncio.create_task(generate_and_update_project_name(project_id=project_id, prompt=prompt))
 
-        # 4. Upload Files to Sandbox (if any)
+        # 4. Upload files to Sandbox (if any)
         message_content = prompt
         if files:
+            # Check if this is a workflow execution by looking at thread metadata
+            thread_result = await client.table('threads').select('metadata').eq('thread_id', thread_id).execute()
+            logger.info(f"Thread query result: {thread_result.data}")
+            thread_metadata = {}
+            if thread_result.data:
+                thread_metadata = thread_result.data[0].get('metadata', {})
+            
+            is_workflow_execution = thread_metadata.get('is_workflow_execution', False)
+            workflow_id = thread_metadata.get('workflow_id')
+            logger.info(f"Thread metadata: {thread_metadata}")
+            logger.info(f"Is workflow execution: {is_workflow_execution}")
+            logger.info(f"Workflow ID: {workflow_id}")
+            logger.info(f"Thread ID: {thread_id}")
+            logger.info(f"Files to upload: {len(files)} files")
+            logger.info(f"File names: {[f.filename for f in files]}")
+            logger.info(f"Bjarke logs API: About to check workflow execution and upload workflow template files")
+            
+            if is_workflow_execution:
+                # For workflow execution, create utility directory and upload workflow template files there
+                # Configure job files will go to /workspace/
+                utility_dir = "/workspace/utility"
+                try:
+                    if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
+                        sandbox.fs.create_folder(utility_dir, "755")
+                        logger.info(f"Created utility directory: {utility_dir}")
+                    else:
+                        # Fallback: Create directory by creating a temporary file and then removing it
+                        temp_file = f"{utility_dir}/.temp"
+                        sandbox.fs.upload_file(b"", temp_file)
+                        sandbox.fs.delete_file(temp_file)
+                        logger.info(f"Created utility directory (fallback method): {utility_dir}")
+                except Exception as e:
+                    logger.warning(f"Utility directory may already exist or creation failed: {e}")
+                
+                # Upload workflow template files to /workspace/utility/
+                logger.info(f"Bjarke logs: About to upload workflow template files for workflow_id: {workflow_id}")
+                await upload_workflow_template_files(sandbox, workflow_id, user_id, db)
+                logger.info(f"Bjarke logs: Completed uploading workflow template files for workflow_id: {workflow_id}")
+                
+                # Configure job files will be uploaded to /workspace/
+                upload_dir = "/workspace"
+                logger.info(f"Workflow execution detected, uploading configure job files to {upload_dir}")
+            else:
+                # For regular agent execution, create utility directory and upload there
+                upload_dir = "/workspace/utility"
+                try:
+                    if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
+                        sandbox.fs.create_folder(upload_dir, "755")
+                        logger.info(f"Created utility directory: {upload_dir}")
+                    else:
+                        # Fallback: Create directory by creating a temporary file and then removing it
+                        temp_file = f"{upload_dir}/.temp"
+                        sandbox.fs.upload_file(b"", temp_file)
+                        sandbox.fs.delete_file(temp_file)
+                        logger.info(f"Created utility directory (fallback method): {upload_dir}")
+                except Exception as e:
+                    logger.warning(f"Utility directory may already exist or creation failed: {e}")
+            
             successful_uploads = []
             failed_uploads = []
             for file in files:
                 if file.filename:
                     try:
                         safe_filename = file.filename.replace('/', '_').replace('\\', '_')
-                        target_path = f"/workspace/{safe_filename}"
+                        target_path = f"{upload_dir}/{safe_filename}"
                         logger.info(f"Attempting to upload {safe_filename} to {target_path} in sandbox {sandbox_id}")
                         content = await file.read()
                         upload_successful = False
@@ -1171,7 +1299,16 @@ async def initiate_agent_with_files(
 
             if successful_uploads:
                 message_content += "\n\n" if message_content else ""
-                for file_path in successful_uploads: message_content += f"[Uploaded File: {file_path}]\n"
+                for file_path in successful_uploads: 
+                    # Only show files from /workspace/ (configure job files) in conversation
+                    # Hide files from /workspace/utility/ (workflow template files) completely
+                    if file_path.startswith("/workspace/") and not file_path.startswith("/workspace/utility/"):
+                        display_path = file_path.replace("/workspace/", "")
+                        message_content += f"[Uploaded File: {display_path}]\n"
+                    elif not file_path.startswith("/workspace/utility/"):
+                        # Show other files (not in utility folder)
+                        message_content += f"[Uploaded File: {file_path}]\n"
+                    # Files in /workspace/utility/ are completely hidden from conversation
             if failed_uploads:
                 message_content += "\n\nThe following files failed to upload:\n"
                 for failed_file in failed_uploads: message_content += f"- {failed_file}\n"
@@ -2203,82 +2340,4 @@ async def create_agent_version(
     
     version = new_version.data[0]
     
-    # Update agent with new version
-    await client.table('agents').update({
-        "current_version_id": version['version_id'],
-        "version_count": next_version_number
-    }).eq("agent_id", agent_id).execute()
-    
-    # Add version history entry
-    await client.table('agent_version_history').insert({
-        "agent_id": agent_id,
-        "version_id": version['version_id'],
-        "action": "created",
-        "changed_by": user_id,
-        "change_description": f"New version v{next_version_number} created"
-    }).execute()
-    
-    logger.info(f"Created version v{next_version_number} for agent {agent_id}")
-    
-    return version
-
-@router.put("/agents/{agent_id}/versions/{version_id}/activate")
-async def activate_agent_version(
-    agent_id: str,
-    version_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    """Switch agent to use a specific version."""
-    client = await db.client
-    
-    # Check if user owns this agent
-    agent_result = await client.table('agents').select("*").eq("agent_id", agent_id).eq("account_id", user_id).execute()
-    if not agent_result.data:
-        raise HTTPException(status_code=404, detail="Agent not found or access denied")
-    
-    # Check if version exists
-    version_result = await client.table('agent_versions').select("*").eq("version_id", version_id).eq("agent_id", agent_id).execute()
-    if not version_result.data:
-        raise HTTPException(status_code=404, detail="Version not found")
-    
-    # Update agent's current version
-    await client.table('agents').update({
-        "current_version_id": version_id
-    }).eq("agent_id", agent_id).execute()
-    
-    # Add version history entry
-    await client.table('agent_version_history').insert({
-        "agent_id": agent_id,
-        "version_id": version_id,
-        "action": "activated",
-        "changed_by": user_id,
-        "change_description": f"Switched to version {version_result.data[0]['version_name']}"
-    }).execute()
-    
-    return {"message": "Version activated successfully"}
-
-@router.get("/agents/{agent_id}/versions/{version_id}", response_model=AgentVersionResponse)
-async def get_agent_version(
-    agent_id: str,
-    version_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    """Get a specific version of an agent."""
-    client = await db.client
-    
-    # Check if user has access to this agent
-    agent_result = await client.table('agents').select("*").eq("agent_id", agent_id).execute()
-    if not agent_result.data:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    
-    agent = agent_result.data[0]
-    if agent['account_id'] != user_id and not agent.get('is_public', False):
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    # Get the specific version
-    version_result = await client.table('agent_versions').select("*").eq("version_id", version_id).eq("agent_id", agent_id).execute()
-    
-    if not version_result.data:
-        raise HTTPException(status_code=404, detail="Version not found")
-    
-    return version_result.data[0]
+    # Update 

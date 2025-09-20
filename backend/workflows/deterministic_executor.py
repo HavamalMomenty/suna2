@@ -79,6 +79,7 @@ class DeterministicWorkflowExecutor:
         if not project_id:
             project_id = workflow.project_id
         
+        logger.info(f"🔍 BJARKE DEBUG: Deterministic executor execute_workflow called for workflow {workflow.name} (ID: {workflow.id}) in thread {thread_id}")
         logger.info(f"Executing deterministic workflow {workflow.name} (ID: {workflow.id}) in thread {thread_id}")
         
         execution = WorkflowExecution(
@@ -98,7 +99,9 @@ class DeterministicWorkflowExecutor:
             await self._ensure_project_has_sandbox(project_id)
             
             # Transfer workflow files to utility folder
+            logger.info(f"Bjarke logs: About to call _transfer_workflow_files_to_utility for workflow {workflow.id}")
             await self._transfer_workflow_files_to_utility(workflow.id, project_id)
+            logger.info(f"Bjarke logs: Completed _transfer_workflow_files_to_utility for workflow {workflow.id}")
             
             # Load visual flow data if not present in workflow
             workflow_with_flow = await self._ensure_workflow_has_flow_data(workflow)
@@ -340,7 +343,7 @@ class DeterministicWorkflowExecutor:
         
         prompt_parts.extend([
             "File Organization:",
-            "- Workflow specification files are available in /workspace/utility/ directory",
+            "- Workflow template files are available in /workspace/utility/ directory",
             "- User-uploaded files (configure job files) are available in /workspace/ directory",
             "- Use relative paths from /workspace/ for all file operations",
             "",
@@ -1588,6 +1591,8 @@ INSTRUCTIONS:
 
     async def _transfer_workflow_files_to_utility(self, workflow_id: str, project_id: str):
         """Transfer workflow files to /workspace/utility/ directory in the sandbox."""
+        logger.info(f"🔍 BJARKE DEBUG: _transfer_workflow_files_to_utility called for workflow_id: {workflow_id}, project_id: {project_id}")
+        logger.info(f"Bjarke logs DETERMINISTIC_EXECUTOR: 🚀 Starting _transfer_workflow_files_to_utility for workflow_id: {workflow_id}, project_id: {project_id}")
         try:
             client = await self.db.client
             
@@ -1637,11 +1642,10 @@ INSTRUCTIONS:
                     file_path = file_data['file_path']
                     
                     # Download file content from storage
-                    from services.supabase import get_supabase_client
-                    supabase = get_supabase_client()
+                    supabase = await self.db.client
                     
                     # Get file from storage
-                    file_response = supabase.storage.from_('workflow-files').download(file_path)
+                    file_response = await supabase.storage.from_('workflow-files').download(file_path)
                     if not file_response:
                         logger.error(f"Failed to download file {filename} from storage")
                         continue

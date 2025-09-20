@@ -100,6 +100,8 @@ export function DashboardContent() {
       stream?: boolean;
       enable_context_manager?: boolean;
       extraFiles?: File[];
+      is_workflow_execution?: boolean;
+      workflow_id?: string;
     },
   ) => {
     if (
@@ -135,6 +137,14 @@ export function DashboardContent() {
       formData.append('reasoning_effort', options?.reasoning_effort ?? 'low');
       formData.append('stream', String(options?.stream ?? true));
       formData.append('enable_context_manager', String(options?.enable_context_manager ?? false));
+      
+      // Add workflow metadata if this is a workflow execution
+      if (options?.is_workflow_execution) {
+        formData.append('is_workflow_execution', String(true));
+        if (options.workflow_id) {
+          formData.append('workflow_id', options.workflow_id);
+        }
+      }
 
       console.log('FormData content:', Array.from(formData.entries()));
 
@@ -201,13 +211,10 @@ export function DashboardContent() {
             
             const downloadedFiles = await downloadWorkflowFiles(workflow.id, workflowFiles);
             
-            // Add files to chat input
-            downloadedFiles.forEach(file => {
-              chatInputRef.current?.addFile(file);
-            });
-            
-            console.log('✔ Added', downloadedFiles.length, 'files to chat input');
-            toast.success(`Loaded ${downloadedFiles.length} file(s) from workflow`);
+            // Workflow template files will be handled by the backend workflow executor
+            // They are uploaded to /workspace/utility/ and don't need to be shown in chat input
+            console.log('✔ Workflow template files will be handled by backend executor');
+            toast.success(`Loaded ${downloadedFiles.length} workflow template file(s)`);
             
             // Small delay to ensure files are processed
             await new Promise(resolve => setTimeout(resolve, 150));
@@ -228,7 +235,11 @@ export function DashboardContent() {
       
       const promptLine = promptText ? `The user input "${promptText}" for job with description "${workflow.description || 'no description'}"\n\n` : '';
       const composed = `${promptLine}${workflow.master_prompt || ''}`.trim();
-      await handleSubmit(composed, { extraFiles: files });
+      await handleSubmit(composed, { 
+        extraFiles: files,
+        is_workflow_execution: true,
+        workflow_id: workflow.id
+      });
       
       // If background, do not navigate; rely on sidebar state. Prevent pushing by clearing initiatedThreadId
       if (background) {

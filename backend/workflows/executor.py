@@ -68,7 +68,7 @@ class WorkflowExecutor:
 
             # Add utility folder information to system prompt
             utility_info = "\n\n## File Organization\n"
-            utility_info += "- Workflow specification files are available in /workspace/utility/ directory\n"
+            utility_info += "- Workflow template files are available in /workspace/utility/ directory\n"
             utility_info += "- User-uploaded files (configure job files) are available in /workspace/ directory\n"
             utility_info += "- Use relative paths from /workspace/ for all file operations\n"
             system_prompt += utility_info
@@ -578,6 +578,8 @@ class WorkflowExecutor:
 
     async def _transfer_workflow_files_to_utility(self, workflow_id: str, project_id: str):
         """Transfer workflow files to /workspace/utility/ directory in the sandbox."""
+        logger.info(f"Bjarke logs EXECUTOR: 🚀 Starting _transfer_workflow_files_to_utility for workflow_id: {workflow_id}, project_id: {project_id}")
+
         try:
             client = await self.db.client
             
@@ -627,11 +629,10 @@ class WorkflowExecutor:
                     file_path = file_data['file_path']
                     
                     # Download file content from storage
-                    from services.supabase import get_supabase_client
-                    supabase = get_supabase_client()
+                    supabase = await self.db.client
                     
                     # Get file from storage
-                    file_response = supabase.storage.from_('workflow-files').download(file_path)
+                    file_response = await supabase.storage.from_('workflow-files').download(file_path)
                     if not file_response:
                         logger.error(f"Failed to download file {filename} from storage")
                         continue
