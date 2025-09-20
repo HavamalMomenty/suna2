@@ -1,3 +1,18 @@
+import os
+import sys
+import asyncio
+
+# --- Debugging hook ---
+if os.getenv("DEBUGPY", "false").lower() == "true":
+    try:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5678))
+        print("🔍 debugpy listening on port 5678")
+        # Don't wait for client to attach on startup
+    except Exception as e:
+        print(f"Failed to start debugpy: {e}")
+        # Continue without debugging
+
 from fastapi import FastAPI, Request, HTTPException, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse

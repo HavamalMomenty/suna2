@@ -1037,6 +1037,12 @@ async def initiate_agent_with_files(
 ):
     """Initiate a new agent session with optional file attachments."""
     global instance_id # Ensure instance_id is accessible
+    
+    # Debug: Log all incoming parameters
+    logger.info(f"🚨 INITIATE AGENT DEBUG: is_workflow_execution={is_workflow_execution}, workflow_id={workflow_id}")
+    logger.info(f"🚨 INITIATE AGENT DEBUG: type(is_workflow_execution)={type(is_workflow_execution)}, type(workflow_id)={type(workflow_id)}")
+    logger.info(f"🚨 INITIATE AGENT DEBUG: files count={len(files)}")
+    logger.info(f"🚨 INITIATE AGENT DEBUG: files=[{[f.filename for f in files]}]")
     if not instance_id:
         raise HTTPException(status_code=500, detail="Agent API not initialized with instance ID")
 
@@ -1189,53 +1195,91 @@ async def initiate_agent_with_files(
         # Trigger Background Naming Task
         asyncio.create_task(generate_and_update_project_name(project_id=project_id, prompt=prompt))
 
-        # 4. Upload files to Sandbox (if any)
+        # 4. Check for workflow execution and upload workflow template files
+        # These parameters come from the frontend via Form data
+        
+        logger.info(f"🔍 WORKFLOW CHECK: is_workflow_execution={is_workflow_execution}, workflow_id={workflow_id}")
+        logger.info(f"🔍 WORKFLOW CHECK: type(is_workflow_execution)={type(is_workflow_execution)}, type(workflow_id)={type(workflow_id)}")
+        
+        # Upload workflow template files if this is a workflow execution
+        # Use Form parameters directly to avoid being overridden by thread metadata
+        if is_workflow_execution and workflow_id:
+            logger.info(f"🚀 WORKFLOW EXECUTION: Uploading workflow template files for workflow {workflow_id}")
+            try:
+                # Get workflow files from the database
+                files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
+                
+                if files_result.data:
+                    logger.info(f"Found {len(files_result.data)} workflow template files for workflow {workflow_id}")
+                    
+                    # Create utility directory
+                    utility_dir = "/workspace/utility"
+                    try:
+                        if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
+                            sandbox.fs.create_folder(utility_dir, "755")
+                            logger.info(f"Created utility directory: {utility_dir}")
+                        else:
+                            # Fallback: Create directory by creating a temporary file and then removing it
+                            temp_file = f"{utility_dir}/.temp"
+                            sandbox.fs.upload_file(b"", temp_file)
+                            sandbox.fs.delete_file(temp_file)
+                            logger.info(f"Created utility directory (fallback method): {utility_dir}")
+                    except Exception as e:
+                        logger.warning(f"Utility directory may already exist or creation failed: {e}")
+                    
+                    # Download files from Supabase storage and upload to sandbox
+                    successful_transfers = 0
+                    for file_data in files_result.data:
+                        try:
+                            filename = file_data['filename']
+                            file_path = file_data['file_path']
+                            logger.info(f"Downloading workflow template file: {filename}")
+                            
+                            # Download file content from storage
+                            file_response = await client.storage.from_('workflow-files').download(file_path)
+                            if not file_response:
+                                logger.error(f"Failed to download file {filename} from storage")
+                                continue
+                            
+                            target_path = f"/workspace/utility/{filename}"
+                            
+                            # Upload to sandbox
+                            if hasattr(sandbox.fs, 'upload_file'):
+                                import inspect
+                                if inspect.iscoroutinefunction(sandbox.fs.upload_file):
+                                    await sandbox.fs.upload_file(file_response, target_path)
+                                else:
+                                    sandbox.fs.upload_file(file_response, target_path)
+                                
+                                successful_transfers += 1
+                                logger.info(f"Successfully uploaded workflow template file {filename} to {target_path}")
+                            else:
+                                logger.error(f"Sandbox does not support file upload for {filename}")
+                                
+                        except Exception as file_error:
+                            logger.error(f"Error uploading workflow template file {file_data.get('filename', 'unknown')}: {file_error}")
+                            continue
+                    
+                    logger.info(f"✅ WORKFLOW EXECUTION: Successfully uploaded {successful_transfers}/{len(files_result.data)} workflow template files to utility directory")
+                else:
+                    logger.info(f"No workflow template files found for workflow {workflow_id}")
+                    
+            except Exception as e:
+                logger.error(f"❌ WORKFLOW EXECUTION: Error uploading workflow template files for workflow {workflow_id}: {e}")
+                # Continue execution even if file upload fails
+        else:
+            logger.info(f"🔍 NOT WORKFLOW EXECUTION: is_workflow_execution={is_workflow_execution}, workflow_id={workflow_id}")
+
+        # 5. Upload configure job files to Sandbox (if any)
         message_content = prompt
         if files:
-            # Check if this is a workflow execution by looking at thread metadata
-            thread_result = await client.table('threads').select('metadata').eq('thread_id', thread_id).execute()
-            logger.info(f"Thread query result: {thread_result.data}")
-            thread_metadata = {}
-            if thread_result.data:
-                thread_metadata = thread_result.data[0].get('metadata', {})
-            
-            is_workflow_execution = thread_metadata.get('is_workflow_execution', False)
-            workflow_id = thread_metadata.get('workflow_id')
-            logger.info(f"Thread metadata: {thread_metadata}")
-            logger.info(f"Is workflow execution: {is_workflow_execution}")
-            logger.info(f"Workflow ID: {workflow_id}")
-            logger.info(f"Thread ID: {thread_id}")
-            logger.info(f"Files to upload: {len(files)} files")
-            logger.info(f"File names: {[f.filename for f in files]}")
-            logger.info(f"Bjarke logs API: About to check workflow execution and upload workflow template files")
-            
+            # Determine upload directory based on execution type
             if is_workflow_execution:
-                # For workflow execution, create utility directory and upload workflow template files there
-                # Configure job files will go to /workspace/
-                utility_dir = "/workspace/utility"
-                try:
-                    if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
-                        sandbox.fs.create_folder(utility_dir, "755")
-                        logger.info(f"Created utility directory: {utility_dir}")
-                    else:
-                        # Fallback: Create directory by creating a temporary file and then removing it
-                        temp_file = f"{utility_dir}/.temp"
-                        sandbox.fs.upload_file(b"", temp_file)
-                        sandbox.fs.delete_file(temp_file)
-                        logger.info(f"Created utility directory (fallback method): {utility_dir}")
-                except Exception as e:
-                    logger.warning(f"Utility directory may already exist or creation failed: {e}")
-                
-                # Upload workflow template files to /workspace/utility/
-                logger.info(f"Bjarke logs: About to upload workflow template files for workflow_id: {workflow_id}")
-                await upload_workflow_template_files(sandbox, workflow_id, user_id, db)
-                logger.info(f"Bjarke logs: Completed uploading workflow template files for workflow_id: {workflow_id}")
-                
-                # Configure job files will be uploaded to /workspace/
+                # For workflow execution, configure job files go to /workspace/
                 upload_dir = "/workspace"
                 logger.info(f"Workflow execution detected, uploading configure job files to {upload_dir}")
             else:
-                # For regular agent execution, create utility directory and upload there
+                # For regular agent execution, files go to /workspace/utility/
                 upload_dir = "/workspace/utility"
                 try:
                     if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
