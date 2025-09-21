@@ -28,7 +28,7 @@ RUN if [ ! -x /app/.venv/bin/pip ]; then \
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir llama-cloud-services==0.6.46
 
-RUN /app/.venv/bin/pip install debugpy
+#RUN /app/.venv/bin/pip install debugpy
 
 # Calculate optimal worker count based on 16 vCPUs
 # Using (2*CPU)+1 formula for CPU-bound applications

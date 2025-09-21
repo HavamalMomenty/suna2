@@ -2,7 +2,8 @@ MODEL_ACCESS_TIERS = {
     "free": [
         "anthropic/claude-sonnet-4-20250514",
         "anthropic/claude-3-7-sonnet-latest",
-        "openai/gpt-4o"
+        "openai/gpt-4o",
+        "xai/grok-4-fast-non-reasoning"
     ],
     "tier_2_20": [
         "openrouter/deepseek/deepseek-chat",
@@ -103,6 +104,7 @@ MODEL_NAME_ALIASES = {
     # "gpt-4": "openai/gpt-4",  # Commented out in constants.py
     # "gemini-flash-2.5": "openrouter/google/gemini-2.5-flash-preview",  # Commented out in constants.py
     # "grok-3": "xai/grok-3-fast-latest",  # Commented out in constants.py
+    "grok-4-fast": "xai/grok-4-fast-non-reasoning",
     "deepseek": "openrouter/deepseek/deepseek-chat",
     # "deepseek-r1": "openrouter/deepseek/deepseek-r1",
     # "grok-3-mini": "xai/grok-3-mini-fast-beta",  # Commented out in constants.py

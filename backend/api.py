@@ -2,11 +2,11 @@ import os
 import sys
 import asyncio
 
-# --- Debugging hook ---
+ #--- Debugging hook ---
 #if os.getenv("DEBUGPY", "false").lower() == "true":
 #    try:
-#        import debugpy
-#        debugpy.listen(("0.0.0.0", 5678))
+ #       import debugpy
+ #       debugpy.listen(("0.0.0.0", 5678))
 #        print("🔍 debugpy listening on port 5678")
 #        # Don't wait for client to attach on startup
 #    except Exception as e:

@@ -37,6 +37,13 @@ export const MODELS = {
     lowQuality: false,
     description: 'Claude Sonnet 4 - Anthropic\'s latest and most advanced AI assistant'
   },
+  'grok-4-fast': {
+    tier: 'free',
+    priority: 90,
+    recommended: true,
+    lowQuality: false,
+    description: 'GROK-4 Fast - xAI\'s fast and efficient AI model'
+  },
 };
 
 // Model tier definitions
@@ -146,6 +153,13 @@ export const useModelSelection = () => {
     // Default models if API data not available
     if (!modelsData?.models || isLoadingModels) {
       models = [
+        { 
+          id: 'grok-4-fast', 
+          label: 'GROK-4 Fast', 
+          requiresSubscription: false,
+          description: MODELS['grok-4-fast']?.description || MODEL_TIERS.free.baseDescription,
+          priority: MODELS['grok-4-fast']?.priority || 90
+        },
         { 
           id: DEFAULT_FREE_MODEL_ID, 
           label: 'DeepSeek', 

@@ -260,3 +260,23 @@ For production deployments, use the following command to set resource limits
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
+
+
+
+# Getting Debugpy up and running
+
+Inside backend add to these files.
+1. docker-compose.prod.yml (expose port and reduce nworkers, extra time on gunicorn before killing debugging process)
+2. Dockerfile (add install)
+3. api.py (core logic at top)
+4. Create file .vscode/launch.json 
+
+Additionally:
+1 Open in "backend" to recognize .vscode/launch.json as launch.
+2 Install extension "debugger" to python 
+3 go to "Run and debug" (ctrl + shit + D) and click attach to docker
+installation prompted
+4 Add to tunnel "-L 5678:localhost:5678"
+5 Add any breakpoints! (should be red as always! otherwise the connection with the backend container may be bad and have to update launch.json)
+6 go to localhost:8000/api/health to see any feedback and look at curser to also see the results
+7 Click Green play button and continue any 
