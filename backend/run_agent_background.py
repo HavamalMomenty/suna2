@@ -22,6 +22,17 @@ from workflows.models import WorkflowDefinition
 import sentry_sdk
 from typing import Dict, Any
 
+#--- Debugging hook for worker ---
+if os.getenv("DEBUGPY_WORKER", "false").lower() == "true":
+    try:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5679))
+        print("🔍 worker debugpy listening on port 5679")
+        # Don't wait for client to attach on startup
+    except Exception as e:
+        print(f"Failed to start debugpy in worker: {e}")
+        # Continue without debugging
+
 rabbitmq_host = os.getenv('RABBITMQ_HOST', 'rabbitmq')
 rabbitmq_port = int(os.getenv('RABBITMQ_PORT', 5672))
 rabbitmq_broker = RabbitmqBroker(
@@ -29,7 +40,10 @@ rabbitmq_broker = RabbitmqBroker(
     port=rabbitmq_port, 
     middleware=[dramatiq.middleware.AsyncIO()],
     confirm_delivery=True,
-    heartbeat=30
+    heartbeat=600,  # 10 minutes - more appropriate for long-running tasks
+    connection_attempts=3,
+    retry_delay=1.0,
+    blocked_connection_timeout=300
 )
 dramatiq.set_broker(rabbitmq_broker)
 
@@ -111,7 +125,6 @@ async def run_agent_background(
 
     sentry.sentry.set_tag("thread_id", thread_id)
 
-    logger.info(f"Starting background agent run: {agent_run_id} for thread: {thread_id} (Instance: {instance_id})")
     logger.info({
         "model_name": model_name,
         "enable_thinking": enable_thinking,
@@ -122,9 +135,9 @@ async def run_agent_background(
         "is_agent_builder": is_agent_builder,
         "target_agent_id": target_agent_id,
     })
-    logger.info(f"🚀 Using model: {model_name} (thinking: {enable_thinking}, reasoning_effort: {reasoning_effort})")
     if agent_config:
         logger.info(f"Using custom agent: {agent_config.get('name', 'Unknown')}")
+
 
     client = await db.client
     start_time = datetime.now(timezone.utc)

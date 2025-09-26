@@ -9,153 +9,322 @@ logger = logging.getLogger(__name__)
 
 
 class ResightsProvider(RapidDataProviderBase):
-    """Provider for accessing Resights.dk API via RapidAPI"""
+    """Provider for accessing Resights.dk API (via RapidAPI gateway or direct token)."""
 
     def __init__(self, api_key: Optional[str] = None, access_token: Optional[str] = None):
         self.api_key = api_key or os.getenv("RAPID_API_KEY")
         self.access_token = access_token or os.getenv("RESIGHTS_TOKEN")
 
-        print(self.access_token)
+        # Base URL for RapidAPI gateway (matches your header usage). If you switch to direct API,
+        # set base_url to "https://api.resights.dk" and use Bearer tokens.
+        base_url = "https://resights.p.rapidapi.com"
+
+        # ---- Endpoint catalog (GET only + safe POST-ready) ----
+        # All routes below are from Resights public docs:
+        # - Properties, valuations, indicators, trades (GET/POST) :contentReference[oaicite:3]{index=3}
+        # - BBR (buildings/units/floors/plots/staircases/tech installs) :contentReference[oaicite:4]{index=4}
+        # - EMO (energy labels by BFE or id) :contentReference[oaicite:5]{index=5}
+        # - POI (within-radius, n-closest; advanced POST kept for later) :contentReference[oaicite:6]{index=6}
+        # - Plandata (municipal planning layers) :contentReference[oaicite:7]{index=7}
+        # - Tinglysning (search + documents + downloads + changes) :contentReference[oaicite:8]{index=8}
+        # - CVR (companies, members, network, financials) :contentReference[oaicite:9]{index=9}
+        # - GIS (geojson, geodanmark buildings, export bbox) :contentReference[oaicite:10]{index=10}
+        # - Minutes (municipal meeting docs) :contentReference[oaicite:11]{index=11}
         endpoints: Dict[str, EndpointSchema] = {
-            "owners": {
-                "route": "/properties/{bfe_number}/owners",
+            # ---------- Properties (BFE) ----------
+            "property_by_bfe": {
+                "route": "/api/v2/properties/{bfe_number}",
                 "method": "GET",
-                "name": "Property Owners",
-                "description": "Get current ownership details for a property.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "Property Details (BFE)",
+                "description": "Get property core by BFE.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_overview": {
+                "route": "/api/v2/properties/{bfe_number}/overview",
+                "method": "GET",
+                "name": "Property Overview",
+                "description": "One-shot summary for underwriting intake.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_tax": {
+                "route": "/api/v2/properties/{bfe_number}/tax",
+                "method": "GET",
+                "name": "Property Tax",
+                "description": "Public tax details for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_bbr_history": {
+                "route": "/api/v2/properties/{bfe_number}/bbr/history",
+                "method": "GET",
+                "name": "BBR History",
+                "description": "Historic BBR records for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_trades": {
+                "route": "/api/v2/properties/{bfe_number}/trades",
+                "method": "GET",
+                "name": "Property Trades",
+                "description": "All registered trades for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
             },
             "transactions_latest": {
-                "route": "/properties/{bfe_number}/trades/latest",
+                "route": "/api/v2/properties/{bfe_number}/trades/latest",
                 "method": "GET",
                 "name": "Latest Sale Transaction",
-                "description": "Get latest transaction including buyer, seller, and purchase price.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "description": "Latest trade incl. buyer, seller, price.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "valuations": {
+                "route": "/api/v2/properties/{bfe_number}/valuations",
+                "method": "GET",
+                "name": "Valuations (All)",
+                "description": "All valuations for the property.",
+                "payload": {"bfe_number": "BFE number (required)"},
             },
             "valuations_latest": {
-                "route": "/properties/{bfe_number}/valuations/latest",
+                "route": "/api/v2/properties/{bfe_number}/valuations/latest",
                 "method": "GET",
                 "name": "Latest Valuation",
-                "description": "Retrieve the most recent public property valuation including land and building value.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "description": "Most recent valuation incl. land/building.",
+                "payload": {"bfe_number": "BFE number (required)"},
             },
-            "cashflow_summary": {
-                "route": "/properties/{bfe_number}/cashflow/summary",
+            "valuations_new": {
+                "route": "/api/v2/properties/{bfe_number}/valuations/new",
                 "method": "GET",
-                "name": "Cash Flow Summary",
-                "description": "Retrieve overall cashflow summary including rental income, vacancy, and expenses.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "New Valuation",
+                "description": "New valuation endpoint (when available).",
+                "payload": {"bfe_number": "BFE number (required)"},
             },
-            "cashflow_rentroll": {
-                "route": "/properties/{bfe_number}/cashflow/rentroll",
+            "indicators": {
+                "route": "/api/v2/properties/{bfe_number}/indicators",
                 "method": "GET",
-                "name": "Rent Roll",
-                "description": "Get detailed rent roll data including unit-level rent amounts and lease status.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "Indicators",
+                "description": "Property-level indicators/signals.",
+                "payload": {"bfe_number": "BFE number (required)"},
             },
-            "cashflow_expenses_monthly": {
-                "route": "/properties/{bfe_number}/cashflow/expenses/monthly",
+
+            # ---------- BBR (Bygnings- og Boligregistret) ----------
+            "bbr_buildings": {
+                "route": "/api/v2/bbr/buildings",
                 "method": "GET",
-                "name": "Monthly Expenses",
-                "description": "Breakdown of monthly operational and maintenance costs.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Buildings",
+                "description": "Buildings (filter by bfe_number or geometry).",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "cashflow_income_monthly": {
-                "route": "/properties/{bfe_number}/cashflow/income/monthly",
+            "bbr_units": {
+                "route": "/api/v2/bbr/units",
                 "method": "GET",
-                "name": "Monthly Income",
-                "description": "Breakdown of monthly income from rentals and other sources.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Units",
+                "description": "Unit-level facts.",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "property_details": {
-                "route": "/properties/{bfe_number}",
+            "bbr_floors": {
+                "route": "/api/v2/bbr/floors",
                 "method": "GET",
-                "name": "Property Details",
-                "description": "High-level information including address, building type, area, and cadastral details.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Floors",
+                "description": "Floors data.",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "property_summary": {
-                "route": "/properties/{bfe_number}/summary",
+            "bbr_plots": {
+                "route": "/api/v2/bbr/plots",
                 "method": "GET",
-                "name": "Property Summary",
-                "description": "Consolidated view of size, usage, valuations, building age, and other core metadata.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Plots",
+                "description": "Plots for property/cadastre.",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "buildings": {
-                "route": "/properties/{bfe_number}/buildings",
+            "bbr_staircases": {
+                "route": "/api/v2/bbr/staircases",
                 "method": "GET",
-                "name": "Building Information",
-                "description": "Detailed data about all buildings on the property including age, floors, and material.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Staircases",
+                "description": "Staircases data.",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "restrictions": {
-                "route": "/properties/{bfe_number}/restrictions",
+            "bbr_technical_installations": {
+                "route": "/api/v2/bbr/technical-installations",
                 "method": "GET",
-                "name": "Property Restrictions",
-                "description": "Legal and zoning restrictions that may affect development or use.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "BBR Technical Installations",
+                "description": "Technical installations.",
+                "payload": {"bfe_number": "(optional) filter"},
             },
-            "land_values": {
-                "route": "/properties/{bfe_number}/land-values",
+
+            # ---------- EMO (Energy labels) ----------
+            "emo_energy_by_bfe": {
+                "route": "/api/v2/emo/energy",
                 "method": "GET",
-                "name": "Land Value History",
-                "description": "Time series of land valuation by public authorities.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "Energy Label by BFE",
+                "description": "Query energy label using bfe_number param.",
+                "payload": {"bfe_number": "BFE number (query param)"},
             },
-            "loans": {
-                "route": "/properties/{bfe_number}/loans",
+            "emo_energy_by_id": {
+                "route": "/api/v2/emo/energy/{id}",
                 "method": "GET",
-                "name": "Registered Loans",
-                "description": "Information on mortgages or loans registered against the property.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "Energy Label by ID",
+                "description": "Retrieve energy label by EMO id.",
+                "payload": {"id": "EMO document id"},
             },
-            "units": {
-                "route": "/properties/{bfe_number}/units",
+
+            # ---------- POI (GET-only helpers; POST variants supported below) ----------
+            "poi_within_radius": {
+                "route": "/api/v2/poi/within-radius/{lat}/{lon}/{radius}",
                 "method": "GET",
-                "name": "Unit Count",
-                "description": "Get the number of residential units in a property (e.g. apartments or condos).",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
+                "name": "POIs Within Radius",
+                "description": "Generic POIs within a radius (meters).",
+                "payload": {"lat": "Latitude", "lon": "Longitude", "radius": "Meters"},
             },
-            "distances": {
-                "route": "/properties/{bfe_number}/distances",
+            "poi_n_closest": {
+                "route": "/api/v2/poi/n-closest/{lat}/{lon}/{n}",
                 "method": "GET",
-                "name": "Nearby Facilities",
-                "description": "Get walking and driving distances from the property to key locations like schools, shops, public transit, and more.",
-                "payload": {
-                    "bfe_number": "BFE number identifying the property (required)"
-                }
-            }
+                "name": "N Closest POIs",
+                "description": "Generic nearest POIs.",
+                "payload": {"lat": "Latitude", "lon": "Longitude", "n": "Count"},
+            },
+
+            # ---------- Plandata ----------
+            "plandata": {
+                "route": "/api/v2/plandata",
+                "method": "GET",
+                "name": "Plandata",
+                "description": "Municipal planning layers.",
+                "payload": {},  # use bbox/filters as query params if available
+            },
+
+            # ---------- Trades (market comps) ----------
+            "trades": {
+                "route": "/api/v2/trades",
+                "method": "GET",
+                "name": "Trades",
+                "description": "List/search trades (basic GET).",
+                "payload": {},  # add filters as query params
+            },
+            "trade_by_id": {
+                "route": "/api/v2/trades/{id}",
+                "method": "GET",
+                "name": "Trade By ID",
+                "description": "Fetch a single trade.",
+                "payload": {"id": "Trade id"},
+            },
+            "trades_portfolio": {
+                "route": "/api/v2/trades/portfolio/{type}/{id}",
+                "method": "GET",
+                "name": "Portfolio Trades",
+                "description": "Trades for a portfolio entity.",
+                "payload": {"type": "portfolio type", "id": "portfolio id"},
+            },
+
+            # ---------- Tinglysning (search + docs + changes) ----------
+            "tingly_address": {
+                "route": "/api/v2/tinglysning/property/search/address",
+                "method": "GET",
+                "name": "Tinglysning Search by Address",
+                "description": "Resolve to property hits/UUIDs/BFE.",
+                "payload": {"query": "address string (query param)"},
+            },
+            "tingly_bfe": {
+                "route": "/api/v2/tinglysning/property/search/bfe-number/{bfe_number}",
+                "method": "GET",
+                "name": "Tinglysning Search by BFE",
+                "description": "Search tinglysning via BFE.",
+                "payload": {"bfe_number": "BFE number"},
+            },
+            "tingly_tingbogsattest": {
+                "route": "/api/v2/tinglysning/tingbogsattest/{uuid}",
+                "method": "GET",
+                "name": "Tingbogsattest (meta)",
+                "description": "Get tingbogsattest by UUID (metadata).",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_tingbogsattest_download": {
+                "route": "/api/v2/tinglysning/download/tingbogsattest/{uuid}",
+                "method": "GET",
+                "name": "Download Tingbogsattest",
+                "description": "Download tingbogsattest PDF.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_atd_by_uuid": {
+                "route": "/api/v2/tinglysning/atd/uuid/{uuid}",
+                "method": "GET",
+                "name": "ATD by UUID",
+                "description": "Aktuelt Tinglyst Dokument.",
+                "payload": {"uuid": "ATD UUID"},
+            },
+            "tingly_changes_latest": {
+                "route": "/api/v2/tinglysning/changes/latest",
+                "method": "GET",
+                "name": "Latest Changes",
+                "description": "Polling endpoint for change events.",
+                "payload": {},
+            },
+
+            # ---------- CVR ----------
+            "cvr_company": {
+                "route": "/api/v2/cvr/companies/{cvr_number}",
+                "method": "GET",
+                "name": "CVR Company",
+                "description": "Company details by CVR.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "cvr_financials_latest": {
+                "route": "/api/v2/cvr/companies/{cvr_number}/financials/latest",
+                "method": "GET",
+                "name": "CVR Financials Latest",
+                "description": "Latest company financials.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "cvr_network": {
+                "route": "/api/v2/cvr/{id}/network",
+                "method": "GET",
+                "name": "CVR Network",
+                "description": "Ownership/people network graph.",
+                "payload": {"id": "internal graph id (from CVR)"},
+            },
+            "cvr_partners_in_crime": {
+                "route": "/api/v2/cvr/{id}/partners-in-crime",
+                "method": "GET",
+                "name": "Partners In Crime",
+                "description": "Network risk signal.",
+                "payload": {"id": "internal graph id (from CVR)"},
+            },
+
+            # ---------- GIS ----------
+            "gis_geojson": {
+                "route": "/api/v2/gis/geojson",
+                "method": "GET",
+                "name": "GIS GeoJSON Layer",
+                "description": "Generic GIS layer endpoint.",
+                "payload": {},  # pass layer params as query
+            },
+            "gis_geodanmark_buildings": {
+                "route": "/api/v2/gis/geodanmark/buildings",
+                "method": "GET",
+                "name": "GeoDanmark Buildings",
+                "description": "Building footprints.",
+                "payload": {},  # filter via query
+            },
+            "gis_export_bbox": {
+                "route": "/api/v2/gis/export/{xmin}/{ymin}/{xmax}/{ymax}",
+                "method": "POST",
+                "name": "GIS Export (BBox)",
+                "description": "Export layers in bounding box (POST).",
+                "payload": {"xmin": "xmin", "ymin": "ymin", "xmax": "xmax", "ymax": "ymax"},
+            },
+
+            # ---------- Minutes (kommunale referater) ----------
+            "minutes_section": {
+                "route": "/api/v2/minutes/sections/{id}",
+                "method": "GET",
+                "name": "Minutes Section",
+                "description": "Fetch a section by id.",
+                "payload": {"id": "section id"},
+            },
+            "minutes_appendix_presign": {
+                "route": "/api/v2/minutes/appendices/{id}/presign",
+                "method": "GET",
+                "name": "Minutes Appendix Presign",
+                "description": "Presigned URL for appendix download.",
+                "payload": {"id": "appendix id"},
+            },
         }
 
-
-        base_url = "https://resights.p.rapidapi.com/api/v2"
         super().__init__(base_url, endpoints)
 
     def call_endpoint(self, route: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -166,73 +335,87 @@ class ResightsProvider(RapidDataProviderBase):
 
         endpoint = self.endpoints[route]
         route_template = endpoint["route"]
+        method = endpoint.get("method", "GET").upper()
 
-        for match in re.findall(r"{(\w+)}", route_template):
-            if match not in payload:
-                raise ValueError(f"Missing required path parameter: {match}")
-            route_template = route_template.replace(f"{{{match}}}", str(payload.pop(match)))
+        # Resolve path params
+        path_params = re.findall(r"{(\w+)}", route_template)
+        for param in path_params:
+            if param not in payload:
+                raise ValueError(f"Missing required path parameter: {param}")
+            route_template = route_template.replace(f"{{{param}}}", str(payload.pop(param)))
 
         url = f"{self.base_url}{route_template}"
-        
+
         headers = {
             "X-RapidAPI-Key": self.api_key,
-            "X-RapidAPI-Host": "resights.p.rapidapi.com"
+            "X-RapidAPI-Host": "resights.p.rapidapi.com",
         }
-
         if self.access_token:
+            # For direct API use "Bearer <token>"; for RapidAPI some setups accept a raw token header.
             headers["Authorization"] = self.access_token
 
-
         try:
-            response = requests.get(url, headers=headers, params=payload)
+            if method == "POST":
+                response = requests.post(url, headers=headers, json=payload or {})
+            else:
+                response = requests.get(url, headers=headers, params=payload or {})
             response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error("Resights error: %s", e)
-            return {"error": str(e), "url": url}
-    
-    def call_raw_path(self, path: str, query: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Call an arbitrary Resights API path directly (without endpoint schema)."""
+            return {"error": str(e), "url": url, "method": method}
+
+    def call_raw_path(self, path: str, query: Optional[Dict[str, Any]] = None, method: str = "GET", json: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Call an arbitrary Resights API path directly (convenience for exploration)."""
         url = f"{self.base_url}{path}"
         headers = {
             "X-RapidAPI-Key": self.api_key,
-            "X-RapidAPI-Host": "resights.p.rapidapi.com"
+            "X-RapidAPI-Host": "resights.p.rapidapi.com",
         }
         if self.access_token:
             headers["Authorization"] = self.access_token
 
         try:
-            response = requests.get(url, headers=headers, params=query or {})
+            m = method.upper()
+            if m == "POST":
+                response = requests.post(url, headers=headers, params=query or {}, json=json or {})
+            else:
+                response = requests.get(url, headers=headers, params=query or {})
             response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error("Resights raw path error: %s", e)
-            return {"error": str(e), "url": url}
+            return {"error": str(e), "url": url, "method": method}
+
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
     from pprint import pprint
     import time
 
-
     load_dotenv()
 
     """
+    Example:
     PYTHONPATH=backend python3 backend/agent/tools/data_providers/ResightsProvider.py
     """
 
     provider = ResightsProvider()
 
-    
-    bfe_number = ""
-    print("\n📌 Property Owners")
-    pprint(provider.call_endpoint("owners", {"bfe_number": bfe_number}))
-    time.sleep(1)
+    # --- Minimal smoke tests (fill in a real BFE/coords to try) ---
+    bfe_number = ""  # e.g. "1234567"
+    if bfe_number:
+        print("\n📌 Property Overview")
+        pprint(provider.call_endpoint("property_overview", {"bfe_number": bfe_number}))
+        time.sleep(0.5)
 
-    print("\n📌 Latest Sale Transaction")
-    pprint(provider.call_endpoint("transactions_latest", {"bfe_number": bfe_number}))
-    time.sleep(1)
+        print("\n📌 Latest Valuation")
+        pprint(provider.call_endpoint("valuations_latest", {"bfe_number": bfe_number}))
+        time.sleep(0.5)
 
-    print("\n📌 Latest Valuation")
-    pprint(provider.call_endpoint("valuations_latest", {"bfe_number": bfe_number}))
-    time.sleep(1)
+        print("\n📌 Energy label (EMO) by BFE (as query param)")
+        pprint(provider.call_endpoint("emo_energy_by_bfe", {"bfe_number": bfe_number}))
+        time.sleep(0.5)
+
+    # Example: POI within radius (use real coords)
+    # pprint(provider.call_endpoint("poi_within_radius", {"lat": 55.6761, "lon": 12.5683, "radius": 500}))

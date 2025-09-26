@@ -21,6 +21,7 @@ from agent.tools.data_providers_tool import DataProvidersTool
 from agent.tools.expand_msg_tool import ExpandMessageTool
 from agent.tools.llama_parse_tool import LlamaParseDocumentTool
 from agent.prompt import get_system_prompt
+from agent.prompt_real_estate_analysis import get_system_prompt_real_estate_analyser
 from utils.logger import logger
 from utils.auth_utils import get_account_id_from_thread
 from services.billing import check_billing_status
@@ -39,8 +40,8 @@ async def run_agent(
     project_id: str,
     stream: bool,
     thread_manager: Optional[ThreadManager] = None,
-    native_max_auto_continues: int = 25,
-    max_iterations: int = 100,
+    native_max_auto_continues: int = 100, #previously 25
+    max_iterations: int = 500, #previously 100
     model_name: str = "anthropic/claude-sonnet-4-20250514",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
@@ -197,33 +198,34 @@ async def run_agent(
     # Prepare system prompt
     # First, get the default system prompt
     if "gemini-2.5-flash" in model_name.lower():
-        default_system_content = get_gemini_system_prompt()
+        default_system_content = get_gemini_system_prompt() + "\n\n" + get_system_prompt_real_estate_analyser()
+
     else:
         # Use the original prompt - the LLM can only use tools that are registered
-        default_system_content = get_system_prompt()
+        logger.info(f"ADDING SYSTEM PROMPT")
+        default_system_content = get_system_prompt() + "\n\n" + get_system_prompt_real_estate_analyser()
         
     # Add sample response for non-anthropic models
-    if "anthropic" not in model_name.lower():
-        sample_response_path = os.path.join(os.path.dirname(__file__), 'sample_responses/1.txt')
-        with open(sample_response_path, 'r') as file:
-            sample_response = file.read()
-        default_system_content = default_system_content + "\n\n <sample_assistant_response>" + sample_response + "</sample_assistant_response>"
+    #if "anthropic" not in model_name.lower():
+    #    sample_response_path = os.path.join(os.path.dirname(__file__), 'sample_responses/1.txt')
+    #    with open(sample_response_path, 'r') as file:
+    #        sample_response = file.read()
+    #    default_system_content = default_system_content + "\n\n <sample_assistant_response>" + sample_response + "</sample_assistant_response>"
     
     # Handle custom agent system prompt
     if agent_config and agent_config.get('system_prompt'):
         custom_system_prompt = agent_config['system_prompt'].strip()
         
-        # Completely replace the default system prompt with the custom one
-        # This prevents confusion and tool hallucination
-        system_content = custom_system_prompt
-        logger.info(f"Using ONLY custom agent system prompt for: {agent_config.get('name', 'Unknown')}")
+        # Append real estate analysis prompt to custom system prompt
+        system_content = custom_system_prompt + "\n\n" + get_system_prompt_real_estate_analyser()
+        logger.info(f"Using custom agent system prompt with real estate analysis for: {agent_config.get('name', 'Unknown')}")
     elif is_agent_builder:
-        system_content = get_agent_builder_prompt()
-        logger.info("Using agent builder system prompt")
+        system_content = get_agent_builder_prompt() + "\n\n" + get_system_prompt_real_estate_analyser()
+        logger.info("Using agent builder system prompt with real estate analysis")
     else:
-        # Use just the default system prompt
+        # Use the default system prompt with real estate analysis
         system_content = default_system_content
-        logger.info("Using default system prompt only")
+        logger.info("Using default system prompt with real estate analysis")
     
     if await is_enabled("knowledge_base"):
         try:
@@ -440,7 +442,7 @@ async def run_agent(
         max_tokens = None
         if "sonnet" in model_name.lower():
             # Claude 3.5 Sonnet has a limit of 8192 tokens
-            max_tokens = 8192
+            max_tokens = 8192*4 #previously 8192
         elif "gpt-4" in model_name.lower():
             max_tokens = 4096
             
@@ -455,7 +457,7 @@ async def run_agent(
                 llm_temperature=0,
                 llm_max_tokens=max_tokens,
                 tool_choice="auto",
-                max_xml_tool_calls=1,
+                max_xml_tool_calls=1,  #0 means no limit
                 temporary_message=temporary_message,
                 processor_config=ProcessorConfig(
                     xml_tool_calling=True,

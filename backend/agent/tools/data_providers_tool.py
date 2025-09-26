@@ -2,11 +2,6 @@ import json
 from typing import Union, Dict, Any
 
 from agentpress.tool import Tool, ToolResult, openapi_schema, xml_schema
-from agent.tools.data_providers.LinkedinProvider import LinkedinProvider
-from agent.tools.data_providers.YahooFinanceProvider import YahooFinanceProvider
-from agent.tools.data_providers.AmazonProvider import AmazonProvider
-from agent.tools.data_providers.ZillowProvider import ZillowProvider
-from agent.tools.data_providers.TwitterProvider import TwitterProvider
 from agent.tools.data_providers.ResightsProvider import ResightsProvider
 
 
@@ -17,11 +12,6 @@ class DataProvidersTool(Tool):
         super().__init__()
 
         self.register_data_providers = {
-            "linkedin": LinkedinProvider(),
-            "yahoo_finance": YahooFinanceProvider(),
-            "amazon": AmazonProvider(),
-            "zillow": ZillowProvider(),
-            "twitter": TwitterProvider(),
             "resights": ResightsProvider(),
         }
 
@@ -35,7 +25,7 @@ class DataProvidersTool(Tool):
                 "properties": {
                     "service_name": {
                         "type": "string",
-                        "description": "The name of the data provider (e.g., 'linkedin', 'twitter', 'zillow', 'amazon', 'yahoo_finance')"
+                        "description": "The name of the data provider (e.g., 'resights')"
                     }
                 },
                 "required": ["service_name"]
@@ -53,10 +43,10 @@ The get-data-provider-endpoints tool returns available endpoints for a specific 
 Use this tool when you need to discover what endpoints are available.
 -->
 
-<!-- Example to get LinkedIn API endpoints -->
+<!-- Example to get Resights API endpoints -->
 <function_calls>
 <invoke name="get_data_provider_endpoints">
-<parameter name="service_name">linkedin</parameter>
+<parameter name="service_name">resights</parameter>
 </invoke>
 </function_calls>
         '''
@@ -69,7 +59,7 @@ Use this tool when you need to discover what endpoints are available.
         Get available endpoints for a specific data provider.
         
         Parameters:
-        - service_name: The name of the data provider (e.g., 'linkedin')
+        - service_name: The name of the data provider (e.g., 'resights')
         """
         try:
             if not service_name:
@@ -98,7 +88,7 @@ Use this tool when you need to discover what endpoints are available.
                 "properties": {
                     "service_name": {
                         "type": "string",
-                        "description": "The name of the API service (e.g., 'linkedin')"
+                        "description": "The name of the API service (e.g., 'resights')"
                     },
                     "route": {
                         "type": "string",
@@ -127,12 +117,12 @@ Use this tool when you need to discover what endpoints are available.
         The route must be a valid endpoint key obtained from get-data-provider-endpoints tool!!
         -->
         
-        <!-- Example to call linkedIn service with the specific route person -->
+        <!-- Example to call resights service with the specific route -->
         <function_calls>
         <invoke name="execute_data_provider_call">
-        <parameter name="service_name">linkedin</parameter>
-        <parameter name="route">person</parameter>
-        <parameter name="payload">{"link": "https://www.linkedin.com/in/johndoe/"}</parameter>
+        <parameter name="service_name">resights</parameter>
+        <parameter name="route">example_route</parameter>
+        <parameter name="payload">{"example": "data"}</parameter>
         </invoke>
         </function_calls>
         '''
@@ -147,7 +137,7 @@ Use this tool when you need to discover what endpoints are available.
         Execute a call to a specific data provider endpoint.
         
         Parameters:
-        - service_name: The name of the data provider (e.g., 'linkedin')
+        - service_name: The name of the data provider (e.g., 'resights')
         - route: The key of the endpoint to call
         - payload: The payload to send with the data provider call (dict or JSON string)
         """

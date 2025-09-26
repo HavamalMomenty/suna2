@@ -5,11 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    #command: ["/app/.venv/bin/gunicorn", "api:app", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "600"]  # ← Add this line, uncomment for production!
+    #command: ["/app/.venv/bin/gunicorn", "api:app", "--threads", "1", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "600"]  # ← Add this line, uncomment for production!
 
     ports:
       - "8000:8000"
-    #  - "5678:5678"      # ← add this line
+     # - "5678:5678"      # ← add this line
 
     env_file:
       - .env
@@ -52,7 +52,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
+    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background   # Changed processs, threads from 4 -> 1 undo 
+    #ports:
+    #  - "5679:5679"      # ← add this line for worker debugpy
     env_file:
       - .env
     volumes:
@@ -74,6 +76,7 @@ services:
       - LOG_LEVEL=INFO
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+      - DEBUGPY_WORKER=true     # ← add this line
     logging:
       driver: "json-file"
       options:

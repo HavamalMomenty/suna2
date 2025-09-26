@@ -266,10 +266,24 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 # Getting Debugpy up and running
 
 Inside backend add to these files.
-1. docker-compose.prod.yml (expose port and reduce nworkers, extra time on gunicorn before killing debugging process)
+1. docker-compose.prod.yml (expose port and reduce n workers, extra time on gunicorn before killing debugging process) (also expose port for worker, reduce threads and processes to 1)
 2. Dockerfile (add install)
-3. api.py (core logic at top)
+3. api.py (core logic at top) 
+3. "run_agent_background.py" to this file i also added similar debugpy logic 
 4. Create file .vscode/launch.json 
+
+Kodestykket jeg tilføjede til både api.py og run_agent_background.py er:
+#--- Debugging hook for worker ---
+if os.getenv("DEBUGPY_WORKER", "false").lower() == "true":
+    try:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5679))
+        print("🔍 worker debugpy listening on port 5679")
+        # Don't wait for client to attach on startup
+    except Exception as e:
+        print(f"Failed to start debugpy in worker: {e}")
+        # Continue without debugging
+
 
 Additionally:
 1 Open in "backend" to recognize .vscode/launch.json as launch.
@@ -280,3 +294,10 @@ installation prompted
 5 Add any breakpoints! (should be red as always! otherwise the connection with the backend container may be bad and have to update launch.json)
 6 go to localhost:8000/api/health to see any feedback and look at curser to also see the results
 7 Click Green play button and continue any 
+
+# to run
+1 Uncomment lines in: 1 dokerfile, 2 suna2/backend/docker-compose.yml 3. backend/api
+2 build backend from terminal (as well as frontend)
+3 ssh -L 3000:localhost:3000 -L 8000:localhost:8000 -L 5678:localhost:5678 momenty2@20.124.90.235
+4 Go to run and debug and run it 
+  select either "attach to worker docker" or "attach to api docker". Worker should be chosen if any of the run_in_background files are to be debugged or choose api docker if Api.py is to be debugged.

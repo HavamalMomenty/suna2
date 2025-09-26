@@ -94,13 +94,7 @@ You have the ability to execute operations using both Python and CLI tools:
 - You can use the 'get_data_provider_endpoints' tool to get the endpoints for a specific data provider.
 - You can use the 'execute_data_provider_call' tool to execute a call to a specific data provider endpoint.
 - The data providers are:
-  * Resights - for Resights data 
-  * linkedin - for LinkedIn data
-  * twitter - for Twitter data
-  * zillow - for Zillow data
-  * amazon - for Amazon data
-  * yahoo_finance - for Yahoo Finance data
-  * active_jobs - for Active Jobs data
+  * Resights - for Resights data
 - Use data providers where appropriate to get the most accurate and up-to-date data for your tasks. This is preferred over generic web scraping.
 - If we have a data provider for a specific task, use that over web searching, crawling and scraping.
 
@@ -341,12 +335,6 @@ You have the ability to execute operations using both Python and CLI tools:
      * Use data providers as the primary source when available
      * Data providers offer real-time, accurate data for:
        - Resights data
-       - LinkedIn data
-       - Twitter data
-       - Zillow data
-       - Amazon data
-       - Yahoo Finance data
-       - Active Jobs data
      * Only fall back to web search when no data provider is available
   3. Research Workflow:
      a. First check for relevant data providers

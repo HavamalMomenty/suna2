@@ -2,16 +2,7 @@ import os
 import sys
 import asyncio
 
- #--- Debugging hook ---
-#if os.getenv("DEBUGPY", "false").lower() == "true":
-#    try:
- #       import debugpy
- #       debugpy.listen(("0.0.0.0", 5678))
-#        print("🔍 debugpy listening on port 5678")
-#        # Don't wait for client to attach on startup
-#    except Exception as e:
-#        print(f"Failed to start debugpy: {e}")
-#        # Continue without debugging
+
 
 from fastapi import FastAPI, Request, HTTPException, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,6 +48,19 @@ MAX_CONCURRENT_IPS = 25
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    #--- Debugging hook ---
+    if os.getenv("DEBUGPY", "false").lower() == "true":
+        try:
+            import debugpy
+            debugpy.listen(("0.0.0.0", 5678))
+            print("🔍 debugpy listening on port 5678")
+            # Don't wait for client to attach on startup
+        except Exception as e:
+            print(f"Failed to start debugpy: {e}")
+            # Continue without debugging
+
+
     logger.info(f"Starting up FastAPI application with instance ID: {instance_id} in {config.ENV_MODE.value} mode")
     try:
         await db.initialize()

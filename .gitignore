@@ -228,3 +228,4 @@ backend/.env.prod
 docs/impl_configure_job.md
 docs/workflow_run_description.md
 backend/.vscode
+backend/assets
