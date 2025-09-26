@@ -33,14 +33,14 @@ export const MODELS = {
   'claude-sonnet-4': { 
     tier: 'premium',
     priority: 100, 
-    recommended: false,
+    recommended: true,
     lowQuality: false,
     description: 'Claude Sonnet 4 - Anthropic\'s latest and most advanced AI assistant'
   },
   'grok-4-fast': {
     tier: 'free',
     priority: 90,
-    recommended: true,
+    recommended: false,
     lowQuality: false,
     description: 'GROK-4 Fast - xAI\'s fast and efficient AI model'
   },

@@ -119,7 +119,7 @@ export default function WorkflowSettings({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="workflow-description">Description</Label>
+                    <Label htmlFor="workflow-description">Describe workflow input</Label>
                     <Textarea
                       id="workflow-description"
                       value={workflowDescription}

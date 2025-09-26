@@ -287,20 +287,6 @@ export function NavUserWithTeams({
                   </>
                 )}
 
-                {/* Delete All Conversations Button - only show for personal account */}
-                {personalAccount && threads.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleDeleteAllConversations}
-                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                      Delete All Conversations
-                    </DropdownMenuItem>
-                  </>
-                )}
-
                 {teamAccounts?.length > 0 && (
                   <>
                     <DropdownMenuLabel className="text-muted-foreground text-xs mt-2">
@@ -365,6 +351,18 @@ export function NavUserWithTeams({
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+
+                {/* Delete All Conversations Button - only show for personal account */}
+                {personalAccount && threads.length > 0 && (
+                  <DropdownMenuItem
+                    onClick={handleDeleteAllConversations}
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    Delete All Conversations
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className='text-destructive focus:text-destructive focus:bg-destructive/10' onClick={handleLogout}>
                   <LogOut className="h-4 w-4 text-destructive" />
