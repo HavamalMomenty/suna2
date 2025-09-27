@@ -189,6 +189,15 @@ app.include_router(scheduling_api.router)
 from knowledge_base import api as knowledge_base_api
 app.include_router(knowledge_base_api.router, prefix="/api")
 
+try:
+    from user_tokens import api as user_tokens_api
+    app.include_router(user_tokens_api.router, prefix="/api")
+    logger.info("User tokens API router loaded successfully")
+except ImportError as e:
+    logger.error(f"Import error loading user tokens API: {e}", exc_info=True)
+except Exception as e:
+    logger.error(f"Failed to load user tokens API: {e}", exc_info=True)
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint to verify API is working."""
@@ -198,6 +207,12 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "instance_id": instance_id
     }
+
+@app.get("/api/test")
+async def test_endpoint():
+    """Test endpoint to verify API routing is working."""
+    logger.info("Test endpoint called")
+    return {"status": "ok", "message": "Test endpoint is working"}
 
 class CustomMCPDiscoverRequest(BaseModel):
     type: str

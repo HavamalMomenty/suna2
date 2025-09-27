@@ -49,7 +49,8 @@ async def run_agent(
     agent_config: Optional[dict] = None,    
     trace: Optional[StatefulTraceClient] = None,
     is_agent_builder: Optional[bool] = False,
-    target_agent_id: Optional[str] = None
+    target_agent_id: Optional[str] = None,
+    user_id: Optional[str] = None
 ):
     """Run the development agent with specified configuration."""
     logger.info(f"🚀 Starting agent with model: {model_name}")
@@ -110,7 +111,7 @@ async def run_agent(
         thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(LlamaParseDocumentTool, project_id=project_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY:
-            thread_manager.add_tool(DataProvidersTool)
+            thread_manager.add_tool(DataProvidersTool, user_id=user_id)
     else:
         logger.info("Custom agent specified - registering only enabled tools")
         thread_manager.add_tool(ExpandMessageTool, thread_id=thread_id, thread_manager=thread_manager)
@@ -130,7 +131,7 @@ async def run_agent(
         if enabled_tools.get('sb_vision_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY and enabled_tools.get('data_providers_tool', {}).get('enabled', False):
-            thread_manager.add_tool(DataProvidersTool)
+            thread_manager.add_tool(DataProvidersTool, user_id=user_id)
         if enabled_tools.get('llama_parse_document_tool', {}).get('enabled', False):
             thread_manager.add_tool(LlamaParseDocumentTool, project_id=project_id, thread_manager=thread_manager)
 

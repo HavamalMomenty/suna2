@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,9 +12,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
-import { UserIcon } from 'lucide-react';
+import { UserIcon, Settings } from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { useRouter } from 'next/navigation';
+import { TokenManagementModal } from '@/components/TokenManagementModal';
 
 interface ClientUserAccountButtonProps {
   userName?: string;
@@ -25,6 +27,7 @@ export default function ClientUserAccountButton({
   userEmail = '',
 }: ClientUserAccountButtonProps) {
   const router = useRouter();
+  const [showTokenModal, setShowTokenModal] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -85,6 +88,13 @@ export default function ClientUserAccountButton({
               Teams
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem
+            className="rounded-md hover:bg-hover-bg cursor-pointer"
+            onClick={() => setShowTokenModal(true)}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Connect to Resights/Redata
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator className="border-subtle dark:border-white/10" />
         <div className="p-1">
@@ -101,6 +111,10 @@ export default function ClientUserAccountButton({
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
+      <TokenManagementModal
+        open={showTokenModal}
+        onOpenChange={setShowTokenModal}
+      />
     </DropdownMenu>
   );
 }

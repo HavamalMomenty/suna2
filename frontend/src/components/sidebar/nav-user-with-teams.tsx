@@ -18,6 +18,7 @@ import {
   Sun,
   Moon,
   Trash2,
+  Key,
 } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
 import NewTeamForm from '@/components/basejump/new-team-form';
@@ -53,6 +54,7 @@ import { useDeleteMultipleThreads, useThreads } from '@/hooks/react-query/sideba
 import { useQueryClient } from '@tanstack/react-query';
 import { threadKeys } from '@/hooks/react-query/sidebar/keys';
 import { toast } from 'sonner';
+import { TokenManagementModal } from '@/components/TokenManagementModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +80,7 @@ export function NavUserWithTeams({
   const { data: accounts } = useAccounts();
   const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = React.useState(false);
+  const [showTokenModal, setShowTokenModal] = React.useState(false);
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   
@@ -342,6 +345,12 @@ export function NavUserWithTeams({
                     </Link>
                   </DropdownMenuItem> */}
                   <DropdownMenuItem
+                    onClick={() => setShowTokenModal(true)}
+                  >
+                    <Key className="mr-2 h-4 w-4" />
+                    Connect to Resights/Redata
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                   >
                     <div className="flex items-center gap-2">
@@ -407,6 +416,12 @@ export function NavUserWithTeams({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Token Management Modal */}
+      <TokenManagementModal
+        open={showTokenModal}
+        onOpenChange={setShowTokenModal}
+      />
     </>
   );
 }

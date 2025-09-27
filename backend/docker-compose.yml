@@ -9,7 +9,7 @@ services:
 
     ports:
       - "8000:8000"
-     # - "5678:5678"      # ← add this line
+     # - "5678:5678"      # ← add this line for debug mode
 
     env_file:
       - .env
@@ -52,9 +52,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background   # Changed processs, threads from 4 -> 1 undo 
+    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background   # Change processs, threads from 4 -> 1, for debug mode
     #ports:
-    #  - "5679:5679"      # ← add this line for worker debugpy
+    #  - "5679:5679"      # ← add this line for debug mode
     env_file:
       - .env
     volumes:

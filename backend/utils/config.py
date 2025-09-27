@@ -145,7 +145,6 @@ class Configuration:
     # Search and other API keys
     TAVILY_API_KEY: str
     RAPID_API_KEY: Optional[str] = None
-    RESIGHTS_TOKEN: Optional[str] = None
     CLOUDFLARE_API_TOKEN: Optional[str] = None
     FIRECRAWL_API_KEY: Optional[str] = None
     FIRECRAWL_URL: Optional[str] = "https://api.firecrawl.dev"

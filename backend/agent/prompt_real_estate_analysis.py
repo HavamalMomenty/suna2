@@ -32,8 +32,10 @@ SYSTEM_PROMPT_REAL_ESTATE_ANALYSER = f"""
 - IF you have a BFE Number, getting information about a certain address
   * Use Resights or Redata api
 
-# 5 Preferences in output
+# 5 Preferences in behavior
 - If asked to produce a document, always place / link the produced document in the chat, such that the user can download it easily. 
+- Always check the set of files in the workspace and in the /utility folder. Do this at the start of all new .
+
 
 """
 

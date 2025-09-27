@@ -11,6 +11,7 @@ import { getWorkflows, viewWorkflow, copyWorkflow, type Workflow } from '@/lib/a
 import { toast } from 'sonner';
 import { useIsAdmin } from '@/hooks/use-admin';
 import { createClient } from '@/lib/supabase/client';
+import { TokenWarningIndicator } from '@/components/TokenWarningIndicator';
 
 // Helper function to get signed URL for image display
 const getImageUrl = async (imagePath: string): Promise<string> => {
@@ -249,6 +250,11 @@ export const WorkflowCards = ({ onSelectWorkflow, projectId, onDoubleClickWorkfl
                     <CardTitle className="font-medium text-foreground text-sm leading-tight line-clamp-2 text-center">
                       {workflow.name}
                     </CardTitle>
+                  </div>
+                  
+                  {/* Token warning indicator */}
+                  <div className="absolute top-1 left-1">
+                    <TokenWarningIndicator />
                   </div>
                   
                   {/* Action buttons */}

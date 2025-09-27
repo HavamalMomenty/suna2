@@ -600,6 +600,7 @@ async def start_agent(
         is_agent_builder=is_agent_builder,
         target_agent_id=target_agent_id,
         request_id=request_id,
+        user_id=user_id,
     )
 
     return {"agent_run_id": agent_run_id, "status": "running"}
@@ -1397,6 +1398,7 @@ async def initiate_agent_with_files(
             is_agent_builder=is_agent_builder,
             target_agent_id=target_agent_id,
             request_id=request_id,
+            user_id=user_id,
         )
 
         return {"thread_id": thread_id, "agent_run_id": agent_run_id}

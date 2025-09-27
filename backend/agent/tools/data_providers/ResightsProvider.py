@@ -2,6 +2,7 @@ import os
 import requests
 from typing import Dict, Optional, Any
 import logging
+import asyncio
 
 from agent.tools.data_providers.RapidDataProviderBase import RapidDataProviderBase, EndpointSchema
 
@@ -11,9 +12,40 @@ logger = logging.getLogger(__name__)
 class ResightsProvider(RapidDataProviderBase):
     """Provider for accessing Resights.dk API (via RapidAPI gateway or direct token)."""
 
-    def __init__(self, api_key: Optional[str] = None, access_token: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, access_token: Optional[str] = None, user_id: Optional[str] = None):
         self.api_key = api_key or os.getenv("RAPID_API_KEY")
-        self.access_token = access_token or os.getenv("RESIGHTS_TOKEN")
+        self.user_id = user_id
+        self.access_token = access_token
+        
+        # If no access_token provided and we have a user_id, try to get from user tokens
+        if not self.access_token and self.user_id:
+            try:
+                # Import here to avoid circular imports
+                from services.user_token_service import UserTokenService
+                token_service = UserTokenService()
+                
+                # Run async function in sync context
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're already in an async context, we need to handle this differently
+                    # For now, we'll fall back to environment variable
+                    self.access_token = os.getenv("RESIGHTS_TOKEN")
+                    if not self.access_token:
+                        logger.warning(f"No Resights token found for user {user_id} and no fallback token available")
+                else:
+                    self.access_token = loop.run_until_complete(token_service.get_resights_token(user_id))
+                    if not self.access_token:
+                        logger.warning(f"No Resights token found for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error retrieving user token for user {user_id}: {e}")
+                self.access_token = os.getenv("RESIGHTS_TOKEN")
+        else:
+            # Fallback to environment variable if no user_id or access_token provided
+            self.access_token = self.access_token or os.getenv("RESIGHTS_TOKEN")
+        
+        # Log if no token is available (but don't throw error)
+        if not self.access_token:
+            logger.warning("No Resights token available. ResightsProvider will not be able to make API calls.")
 
         # Base URL for RapidAPI gateway (matches your header usage). If you switch to direct API,
         # set base_url to "https://api.resights.dk" and use Bearer tokens.
@@ -367,6 +399,10 @@ class ResightsProvider(RapidDataProviderBase):
 
     def call_raw_path(self, path: str, query: Optional[Dict[str, Any]] = None, method: str = "GET", json: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Call an arbitrary Resights API path directly (convenience for exploration)."""
+        # Check if we have a token before making API calls
+        if not self.access_token:
+            return {"error": "No Resights token configured. Please add your Resights token in user settings."}
+            
         url = f"{self.base_url}{path}"
         headers = {
             "X-RapidAPI-Key": self.api_key,

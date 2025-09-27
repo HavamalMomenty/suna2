@@ -88,6 +88,7 @@ async def run_agent_background(
     is_agent_builder: Optional[bool] = False,
     target_agent_id: Optional[str] = None,
     request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ):
     """Run the agent in the background using Redis for state."""
     structlog.contextvars.clear_contextvars()
@@ -203,7 +204,8 @@ async def run_agent_background(
             agent_config=agent_config,
             trace=trace,
             is_agent_builder=is_agent_builder,
-            target_agent_id=target_agent_id
+            target_agent_id=target_agent_id,
+            user_id=user_id
         )
 
         final_status = "running"

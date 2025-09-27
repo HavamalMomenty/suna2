@@ -8,11 +8,12 @@ from agent.tools.data_providers.ResightsProvider import ResightsProvider
 class DataProvidersTool(Tool):
     """Tool for making requests to various data providers."""
 
-    def __init__(self):
+    def __init__(self, user_id: str = None):
         super().__init__()
+        self.user_id = user_id
 
         self.register_data_providers = {
-            "resights": ResightsProvider(),
+            "resights": ResightsProvider(user_id=user_id),
         }
 
     @openapi_schema({
