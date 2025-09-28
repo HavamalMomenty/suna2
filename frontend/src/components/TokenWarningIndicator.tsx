@@ -10,15 +10,35 @@ const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 interface TokenWarningIndicatorProps {
   className?: string;
+  onRefresh?: () => void;
 }
 
-export function TokenWarningIndicator({ className }: TokenWarningIndicatorProps) {
+export function TokenWarningIndicator({ className, onRefresh }: TokenWarningIndicatorProps) {
   const [hasTokens, setHasTokens] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkTokenStatus();
   }, []);
+
+  // Listen for token updates from other components
+  useEffect(() => {
+    const handleTokenUpdate = () => {
+      checkTokenStatus();
+    };
+
+    // Listen for custom events that indicate token changes
+    window.addEventListener('tokensUpdated', handleTokenUpdate);
+    
+    // Expose refresh function to parent if needed
+    if (onRefresh) {
+      onRefresh();
+    }
+    
+    return () => {
+      window.removeEventListener('tokensUpdated', handleTokenUpdate);
+    };
+  }, [onRefresh]);
 
   const checkTokenStatus = async () => {
     try {

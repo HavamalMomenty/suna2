@@ -170,7 +170,11 @@ Use this tool when you need to discover what endpoints are available.
                 return self.fail_response(f"Endpoint '{route}' not found in {service_name} data provider.")
             
             
-            result = data_provider.call_endpoint(route, payload)
+            # Use async version if available (for providers that need async token initialization)
+            if hasattr(data_provider, 'call_endpoint_async'):
+                result = await data_provider.call_endpoint_async(route, payload)
+            else:
+                result = data_provider.call_endpoint(route, payload)
             return self.success_response(result)
             
         except Exception as e:

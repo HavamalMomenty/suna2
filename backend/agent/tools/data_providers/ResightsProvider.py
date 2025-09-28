@@ -16,29 +16,19 @@ class ResightsProvider(RapidDataProviderBase):
         self.api_key = api_key or os.getenv("RAPID_API_KEY")
         self.user_id = user_id
         self.access_token = access_token
+        self._token_service = None
+        self._token_initialized = False
         
-        # If no access_token provided and we have a user_id, try to get from user tokens
+        # If no access_token provided and we have a user_id, we'll initialize the token lazily
+        # when needed in the async context
         if not self.access_token and self.user_id:
+            # Initialize token service for later use
             try:
-                # Import here to avoid circular imports
                 from services.user_token_service import UserTokenService
-                token_service = UserTokenService()
-                
-                # Run async function in sync context
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # If we're already in an async context, we need to handle this differently
-                    # For now, we'll fall back to environment variable
-                    self.access_token = os.getenv("RESIGHTS_TOKEN")
-                    if not self.access_token:
-                        logger.warning(f"No Resights token found for user {user_id} and no fallback token available")
-                else:
-                    self.access_token = loop.run_until_complete(token_service.get_resights_token(user_id))
-                    if not self.access_token:
-                        logger.warning(f"No Resights token found for user {user_id}")
+                self._token_service = UserTokenService()
             except Exception as e:
-                logger.error(f"Error retrieving user token for user {user_id}: {e}")
-                self.access_token = os.getenv("RESIGHTS_TOKEN")
+                logger.error(f"Error initializing token service for user {user_id}: {e}")
+                self._token_service = None
         else:
             # Fallback to environment variable if no user_id or access_token provided
             self.access_token = self.access_token or os.getenv("RESIGHTS_TOKEN")
@@ -358,6 +348,33 @@ class ResightsProvider(RapidDataProviderBase):
         }
 
         super().__init__(base_url, endpoints)
+
+    async def _ensure_token_initialized(self):
+        """Initialize the user token if needed."""
+        if self._token_initialized or not self._token_service or not self.user_id:
+            return
+            
+        try:
+            self.access_token = await self._token_service.get_resights_token(self.user_id)
+            if not self.access_token:
+                # Fallback to environment variable
+                self.access_token = os.getenv("RESIGHTS_TOKEN")
+                if not self.access_token:
+                    logger.warning(f"No Resights token found for user {self.user_id} and no fallback token available")
+                else:
+                    logger.info(f"Using fallback Resights token for user {self.user_id}")
+            else:
+                logger.info(f"Successfully loaded Resights token for user {self.user_id}")
+            self._token_initialized = True
+        except Exception as e:
+            logger.error(f"Error retrieving user token for user {self.user_id}: {e}")
+            self.access_token = os.getenv("RESIGHTS_TOKEN")
+            self._token_initialized = True
+
+    async def call_endpoint_async(self, route: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Async version of call_endpoint that ensures token is initialized."""
+        await self._ensure_token_initialized()
+        return self.call_endpoint(route, payload)
 
     def call_endpoint(self, route: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         import re

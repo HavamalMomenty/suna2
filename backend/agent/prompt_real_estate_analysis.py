@@ -35,7 +35,7 @@ SYSTEM_PROMPT_REAL_ESTATE_ANALYSER = f"""
 # 5 Preferences in behavior
 - If asked to produce a document, always place / link the produced document in the chat, such that the user can download it easily. 
 - Always check the set of files in the workspace and in the /utility folder. Do this at the start of all new .
-
+- If given a BFE number always use endpoints from resights or redata (depending on which is available) to answer the question (if appropriate). 
 
 """
 

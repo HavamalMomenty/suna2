@@ -234,6 +234,9 @@ export function TokenManagementModal({
         onTokensUpdated();
       }
 
+      // Dispatch custom event to notify other components (like TokenWarningIndicator)
+      window.dispatchEvent(new CustomEvent('tokensUpdated'));
+
       // Auto-close after success
       setTimeout(() => {
         onOpenChange(false);
