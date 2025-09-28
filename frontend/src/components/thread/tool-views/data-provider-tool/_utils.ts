@@ -346,10 +346,12 @@ export function extractDataProviderEndpointsData(
           return detectedServiceName.toLowerCase();
         }
 
-        if (!contentStr) return 'linkedin';
+        if (!contentStr) return 'unknown';
 
         const content_lower = contentStr.toLowerCase();
         
+        if (content_lower.includes('resights')) return 'resights';
+        if (content_lower.includes('redata')) return 'redata';
         if (content_lower.includes('linkedin')) return 'linkedin';
         if (content_lower.includes('twitter')) return 'twitter';
         if (content_lower.includes('zillow')) return 'zillow';
@@ -357,7 +359,7 @@ export function extractDataProviderEndpointsData(
         if (content_lower.includes('yahoo') || content_lower.includes('finance')) return 'yahoo_finance';
         if (content_lower.includes('jobs') || content_lower.includes('active')) return 'active_jobs';
         
-        return 'linkedin';
+        return 'unknown';
       };
 
       serviceName = extractProviderName(assistantContent || toolContent);

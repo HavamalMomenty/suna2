@@ -23,54 +23,22 @@ import { Badge } from '@/components/ui/badge';
 import { extractDataProviderCallData } from './_utils';
 
 const PROVIDER_CONFIG = {
-  'linkedin': {
-    name: 'LinkedIn Data Provider',
-    icon: Users,
-    color: 'from-blue-500 to-blue-600',
-    bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-    textColor: 'text-blue-700 dark:text-blue-300',
-    borderColor: 'border-blue-200 dark:border-blue-800'
-  },
-  'twitter': {
-    name: 'Twitter Data Provider', 
-    icon: MessageCircle,
-    color: 'from-sky-400 to-sky-500',
-    bgColor: 'bg-sky-50 dark:bg-sky-900/20',
-    textColor: 'text-sky-700 dark:text-sky-300',
-    borderColor: 'border-sky-200 dark:border-sky-800'
-  },
-  'zillow': {
-    name: 'Zillow Data Provider',
+  'resights': {
+    name: 'Resights Data Provider',
     icon: Home,
-    color: 'from-emerald-500 to-emerald-600',
-    bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
-    textColor: 'text-emerald-700 dark:text-emerald-300',
-    borderColor: 'border-emerald-200 dark:border-emerald-800'
+    color: 'from-green-500 to-green-600',
+    bgColor: 'bg-green-50 dark:bg-green-900/20',
+    textColor: 'text-green-700 dark:text-green-300',
+    borderColor: 'border-green-200 dark:border-green-800'
   },
-  'amazon': {
-    name: 'Amazon Data Provider',
-    icon: ShoppingBag,
-    color: 'from-orange-500 to-orange-600',
-    bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-    textColor: 'text-orange-700 dark:text-orange-300',
-    borderColor: 'border-orange-200 dark:border-orange-800'
+  'redata': {
+    name: 'Redata Data Provider',
+    icon: Database,
+    color: 'from-cyan-500 to-cyan-600',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-900/20',
+    textColor: 'text-cyan-700 dark:text-cyan-300',
+    borderColor: 'border-cyan-200 dark:border-cyan-800'
   },
-  'yahoo_finance': {
-    name: 'Yahoo Finance Data Provider',
-    icon: TrendingUp,
-    color: 'from-purple-500 to-purple-600',
-    bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-    textColor: 'text-purple-700 dark:text-purple-300',
-    borderColor: 'border-purple-200 dark:border-purple-800'
-  },
-  'active_jobs': {
-    name: 'Active Jobs Data Provider',
-    icon: Briefcase,
-    color: 'from-indigo-500 to-indigo-600',
-    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
-    textColor: 'text-indigo-700 dark:text-indigo-300',
-    borderColor: 'border-indigo-200 dark:border-indigo-800'
-  }
 };
 
 export function ExecuteDataProviderCallToolView({
@@ -102,7 +70,14 @@ export function ExecuteDataProviderCallToolView({
   const providerKey = serviceName?.toLowerCase() as keyof typeof PROVIDER_CONFIG;
   const providerConfig = providerKey && PROVIDER_CONFIG[providerKey] 
     ? PROVIDER_CONFIG[providerKey] 
-    : PROVIDER_CONFIG['linkedin'];
+    : {
+        name: serviceName ? `${serviceName.charAt(0).toUpperCase() + serviceName.slice(1)} Data Provider` : 'Data Provider',
+        icon: Globe,
+        color: 'from-gray-500 to-gray-600',
+        bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+        textColor: 'text-gray-700 dark:text-gray-300',
+        borderColor: 'border-gray-200 dark:border-gray-800'
+      };
   
   const IconComponent = providerConfig.icon;
 

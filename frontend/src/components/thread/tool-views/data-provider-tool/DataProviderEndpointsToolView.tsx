@@ -201,7 +201,7 @@ export function DataProviderEndpointsToolView({
                     </span>
                   </div>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">
-                    {serviceName || 'linkedin'}
+                    {serviceName || 'unknown'}
                   </span>
                 </div>
               </div>
