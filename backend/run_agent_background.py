@@ -23,14 +23,14 @@ import sentry_sdk
 from typing import Dict, Any
 
 #--- Debugging hook for worker ---
-if os.getenv("DEBUGPY_WORKER", "false").lower() == "true":
-    try:
-        import debugpy
-        debugpy.listen(("0.0.0.0", 5679))
-        print("🔍 worker debugpy listening on port 5679")
-        # Don't wait for client to attach on startup
-    except Exception as e:
-        print(f"Failed to start debugpy in worker: {e}")
+#if os.getenv("DEBUGPY_WORKER", "false").lower() == "true":
+#    try:
+##        import debugpy
+#        debugpy.listen(("0.0.0.0", 5679))
+#        print("🔍 worker debugpy listening on port 5679")
+#        # Don't wait for client to attach on startup
+#    except Exception as e:
+#        print(f"Failed to start debugpy in worker: {e}")
         # Continue without debugging
 
 rabbitmq_host = os.getenv('RABBITMQ_HOST', 'rabbitmq')
