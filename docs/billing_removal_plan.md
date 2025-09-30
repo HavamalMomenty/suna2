@@ -40,15 +40,15 @@ This document summarizes the complete removal of billing system restrictions and
 
 ### 1. Frontend Model Selection
 **File:** `suna2/frontend/src/components/thread/chat-input/_use-model-selection.ts`
-- **Function:** Changed `DEFAULT_FREE_MODEL_ID` from `'deepseek'` to `'claude-sonnet-4'`
-- **Function:** Modified `MODELS` object to only include `'claude-sonnet-4'`
+- **Function:** Changed `DEFAULT_FREE_MODEL_ID` from `'deepseek'` to `'claude-sonnet-4.5'`
+- **Function:** Modified `MODELS` object to only include `'claude-sonnet-4.5'`
 - **Function:** Added filtering logic to only show models from API that exist in local `MODELS` object
 - **Function:** Set `requiresSubscription: false` for all models in `MODEL_OPTIONS` generation
-- **Impact:** Single model (Claude Sonnet 4) available to all users without restrictions
+- **Impact:** Single model (Claude Sonnet 4.5) available to all users without restrictions
 
 ### 2. Backend Model Access
 **File:** `suna2/backend/utils/constants.py`
-- **Function:** Moved `anthropic/claude-sonnet-4-20250514`, `anthropic/claude-3-7-sonnet-latest`, and `openai/gpt-4o` to `MODEL_ACCESS_TIERS["free"]`
+- **Function:** Moved `anthropic/claude-sonnet-4-5-20250929`, `anthropic/claude-3-7-sonnet-latest`, and `openai/gpt-4o` to `MODEL_ACCESS_TIERS["free"]`
 - **Function:** Removed these models from all `tier_*` lists
 - **Impact:** Backend now treats premium models as free tier accessible
 

@@ -345,6 +345,865 @@ class ResightsProvider(RapidDataProviderBase):
                 "description": "Presigned URL for appendix download.",
                 "payload": {"id": "appendix id"},
             },
+
+            ##### ENDPOINT ADDED AFTER 9/30 below
+            # ---------- Meta ----------
+            "token": {
+                "route": "/token",
+                "method": "GET",
+                "name": "Token",
+                "description": "Issue an authentication token.",
+                "payload": {},
+            },
+            "healthcheck": {
+                "route": "/healthcheck",
+                "method": "GET",
+                "name": "Healthcheck",
+                "description": "Check if service is available.",
+                "payload": {},
+            },
+
+            # ---------- Properties (BFE) ----------
+            "properties_list": {
+                "route": "/api/v2/properties",
+                "method": "GET",
+                "name": "Get Properties",
+                "description": "List/search properties (basic GET).",
+                "payload": {},  # filters as query params
+            },
+            "properties_advanced": {
+                "route": "/api/v2/properties",
+                "method": "POST",
+                "name": "Get Properties Advanced",
+                "description": "Advanced property search (POST).",
+                "payload": {},  # body with filters
+            },
+            "property_tax_ois": {
+                "route": "/api/v2/properties/{bfe_number}/tax/ois",
+                "method": "GET",
+                "name": "Property OIS Tax",
+                "description": "OIS tax details for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_tax_old": {
+                "route": "/api/v2/properties/{bfe_number}/tax/old",
+                "method": "GET",
+                "name": "Property Old Tax",
+                "description": "Legacy/old tax details for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_bbr": {
+                "route": "/api/v2/properties/{bfe_number}/bbr",
+                "method": "GET",
+                "name": "Property BBR Details",
+                "description": "Property BBR details by BFE.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_ebr": {
+                "route": "/api/v2/properties/{bfe_number}/ebr",
+                "method": "GET",
+                "name": "Property EBR Details",
+                "description": "Property EBR details by BFE.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+            "property_owners": {
+                "route": "/api/v2/properties/{bfe_number}/owners",
+                "method": "GET",
+                "name": "Property Owners",
+                "description": "Owners for a property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+
+            # ---------- BBR ----------
+            "bbr_cases": {
+                "route": "/api/v2/bbr/cases",
+                "method": "GET",
+                "name": "BBR Cases",
+                "description": "BBR case records.",
+                "payload": {"bfe_number": "(optional) filter"},
+            },
+
+            # ---------- Trades ----------
+            "trades_advanced": {
+                "route": "/api/v2/trades",
+                "method": "POST",
+                "name": "Trades Advanced",
+                "description": "Advanced trades search (POST).",
+                "payload": {},  # body with filters
+            },
+
+            # ---------- Cadastres ----------
+            "cadastres": {
+                "route": "/api/v2/cadastres",
+                "method": "GET",
+                "name": "Cadastres",
+                "description": "List/search cadastres.",
+                "payload": {},  # filters as query
+            },
+            "cadastres_advanced": {
+                "route": "/api/v2/cadastres",
+                "method": "POST",
+                "name": "Cadastres Advanced",
+                "description": "Advanced cadastre search (POST).",
+                "payload": {},  # body with filters
+            },
+            "cadastre_by_id": {
+                "route": "/api/v2/cadastres/{id}",
+                "method": "GET",
+                "name": "Cadastre By ID",
+                "description": "Fetch single cadastre by id.",
+                "payload": {"id": "Cadastre id"},
+            },
+
+            # ---------- CVR ----------
+            "cvr_companies": {
+                "route": "/api/v2/cvr/companies",
+                "method": "GET",
+                "name": "CVR Companies",
+                "description": "List/search companies.",
+                "payload": {},  # filters as query
+            },
+            "cvr_companies_advanced": {
+                "route": "/api/v2/cvr/companies",
+                "method": "POST",
+                "name": "CVR Companies Advanced",
+                "description": "Advanced company search (POST).",
+                "payload": {},  # body with filters
+            },
+            "cvr_company_timeline": {
+                "route": "/api/v2/cvr/companies/{cvr_number}/timeline",
+                "method": "GET",
+                "name": "Company Timeline",
+                "description": "Timeline for company by CVR.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "cvr_company_financials": {
+                "route": "/api/v2/cvr/companies/{cvr_number}/financials",
+                "method": "GET",
+                "name": "Company Financials",
+                "description": "All financials for company.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "cvr_members": {
+                "route": "/api/v2/cvr/members",
+                "method": "GET",
+                "name": "CVR Members",
+                "description": "List/search members.",
+                "payload": {},  # filters as query
+            },
+            "cvr_members_advanced": {
+                "route": "/api/v2/cvr/members",
+                "method": "POST",
+                "name": "CVR Members Advanced",
+                "description": "Advanced members search (POST).",
+                "payload": {},  # body with filters
+            },
+            "cvr_member_by_unit": {
+                "route": "/api/v2/cvr/members/{unit_number}",
+                "method": "GET",
+                "name": "CVR Member",
+                "description": "Member by unit number.",
+                "payload": {"unit_number": "Unit number"},
+            },
+            "cvr_member_timeline": {
+                "route": "/api/v2/cvr/members/{cvr_number}/timeline",
+                "method": "GET",
+                "name": "Member Timeline",
+                "description": "Timeline for a member by CVR.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "cvr_p_units": {
+                "route": "/api/v2/cvr/p-units",
+                "method": "GET",
+                "name": "CVR P Units",
+                "description": "List/search production units.",
+                "payload": {},  # filters as query
+            },
+            "cvr_p_units_advanced": {
+                "route": "/api/v2/cvr/p-units",
+                "method": "POST",
+                "name": "CVR P Units Advanced",
+                "description": "Advanced P-units search (POST).",
+                "payload": {},  # body with filters
+            },
+            "cvr_p_unit": {
+                "route": "/api/v2/cvr/p-units/{p_number}",
+                "method": "GET",
+                "name": "CVR P Unit",
+                "description": "Production unit by P-number.",
+                "payload": {"p_number": "P-number"},
+            },
+            "cvr_network_pair": {
+                "route": "/api/v2/cvr/network/pair",
+                "method": "GET",
+                "name": "Connections Between Pair",
+                "description": "Network connections between two entities.",
+                "payload": {},  # use query params
+            },
+            "cvr_expand_network": {
+                "route": "/api/v2/cvr/{id}/expand-network",
+                "method": "GET",
+                "name": "Expand Network",
+                "description": "Expand ownership/people network graph.",
+                "payload": {"id": "internal graph id"},
+            },
+            "cvr_registrations": {
+                "route": "/api/v2/cvr/registrations",
+                "method": "GET",
+                "name": "Registration Texts",
+                "description": "Company registration texts.",
+                "payload": {},  # filters as query
+            },
+
+            # ---------- Persons / EJF ----------
+            "ejf_persons": {
+                "route": "/api/v2/ejf/persons",
+                "method": "GET",
+                "name": "EJF Persons",
+                "description": "List/search persons (Ejerfortegnelsen).",
+                "payload": {},  # filters as query
+            },
+            "ejf_persons_advanced": {
+                "route": "/api/v2/ejf/persons",
+                "method": "POST",
+                "name": "EJF Persons Advanced",
+                "description": "Advanced person search (POST).",
+                "payload": {},  # body with filters
+            },
+            "ejf_person_by_id": {
+                "route": "/api/v2/ejf/persons/{id}",
+                "method": "GET",
+                "name": "EJF Person By ID",
+                "description": "Fetch person by EJF id.",
+                "payload": {"id": "EJF person id"},
+            },
+            "ejf_person_portfolio": {
+                "route": "/api/v2/ejf/persons/{id}/portfolio",
+                "method": "GET",
+                "name": "EJF Person Portfolio",
+                "description": "Portfolio for an EJF person id.",
+                "payload": {"id": "EJF person id"},
+            },
+            "ejf_others": {
+                "route": "/api/v2/ejf/others",
+                "method": "GET",
+                "name": "EJF Others",
+                "description": "Other owners list/search.",
+                "payload": {},  # filters as query
+            },
+            "ejf_others_advanced": {
+                "route": "/api/v2/ejf/others",
+                "method": "POST",
+                "name": "EJF Others Advanced",
+                "description": "Advanced others search (POST).",
+                "payload": {},  # body with filters
+            },
+            "ejf_other_by_id": {
+                "route": "/api/v2/ejf/others/{id}",
+                "method": "GET",
+                "name": "EJF Other By ID",
+                "description": "Fetch 'other' by id.",
+                "payload": {"id": "EJF other id"},
+            },
+            "robinson_list": {
+                "route": "/api/v2/robinson",
+                "method": "GET",
+                "name": "Robinson List",
+                "description": "Get Robinson list.",
+                "payload": {},
+            },
+            "robinson_check": {
+                "route": "/api/v2/robinson/check",
+                "method": "GET",
+                "name": "Check Robinson List",
+                "description": "Check if entry is on Robinson list.",
+                "payload": {},  # query params
+            },
+
+            # ---------- Financials (catalog) ----------
+            "financials": {
+                "route": "/api/v2/cvr/financials",
+                "method": "GET",
+                "name": "Financials",
+                "description": "Financial statements (catalog/list).",
+                "payload": {},  # filters as query
+            },
+            "financials_advanced": {
+                "route": "/api/v2/cvr/financials",
+                "method": "POST",
+                "name": "Financials Advanced",
+                "description": "Advanced financials search (POST).",
+                "payload": {},  # body with filters
+            },
+            "financials_by_id": {
+                "route": "/api/v2/cvr/financials/{id}",
+                "method": "GET",
+                "name": "Financials By ID",
+                "description": "Financial statement by id.",
+                "payload": {"id": "Financials id"},
+            },
+
+            # ---------- GI ----------
+            "gi_documents": {
+                "route": "/api/v2/gi/{bfe_number}",
+                "method": "GET",
+                "name": "GI Documents",
+                "description": "Grundejernes Investeringsfond documents for property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+
+            # ---------- GIS ----------
+            "gis_mvt": {
+                "route": "/api/v2/gis/mvt/{layer}/{z}/{x}/{y}.pbf",
+                "method": "GET",
+                "name": "Vector Layer (MVT)",
+                "description": "Vector tiles for GIS layer.",
+                "payload": {"layer": "Layer", "z": "Zoom", "x": "X", "y": "Y"},
+            },
+            "gis_proxy": {
+                "route": "/api/v2/gis/proxy",
+                "method": "GET",
+                "name": "Geoservice Proxy",
+                "description": "Proxy to external geoservices.",
+                "payload": {},  # target as query
+            },
+            "gis_convert": {
+                "route": "/api/v2/gis/convert",
+                "method": "POST",
+                "name": "Convert GIS File to GeoJSON",
+                "description": "Upload/convert GIS file to GeoJSON.",
+                "payload": {},  # file/body payload
+            },
+            "gis_meta": {
+                "route": "/api/v2/gis/meta",
+                "method": "GET",
+                "name": "GeoJSON Layer Meta",
+                "description": "Metadata for available GIS layers.",
+                "payload": {},
+            },
+
+            # ---------- POI (Shops & Queries) ----------
+            "poi_shop_brand_get": {
+                "route": "/api/v2/poi/shops/brands/{name}",
+                "method": "GET",
+                "name": "POI Shop Brand",
+                "description": "Get a shop brand by name.",
+                "payload": {"name": "Brand name"},
+            },
+            "poi_shop_brand_delete": {
+                "route": "/api/v2/poi/shops/brands/{name}",
+                "method": "DELETE",
+                "name": "Delete POI Shop Brand",
+                "description": "Delete a shop brand.",
+                "payload": {"name": "Brand name"},
+            },
+            "poi_shop_brands": {
+                "route": "/api/v2/poi/shops/brands",
+                "method": "GET",
+                "name": "POI Shop Brands",
+                "description": "List shop brands.",
+                "payload": {},
+            },
+            "poi_shop_brand_add": {
+                "route": "/api/v2/poi/shops/brands",
+                "method": "POST",
+                "name": "Add POI Shop Brand",
+                "description": "Create a shop brand.",
+                "payload": {},  # body with brand data
+            },
+            "poi_shop_query_get": {
+                "route": "/api/v2/poi/shops/queries/{brand}/{query_name}",
+                "method": "GET",
+                "name": "POI Shop Query",
+                "description": "Get a saved shop query.",
+                "payload": {"brand": "Brand", "query_name": "Query name"},
+            },
+            "poi_shop_query_delete": {
+                "route": "/api/v2/poi/shops/queries/{brand}/{query_name}",
+                "method": "DELETE",
+                "name": "Delete POI Shop Query",
+                "description": "Delete a saved shop query.",
+                "payload": {"brand": "Brand", "query_name": "Query name"},
+            },
+            "poi_shop_queries": {
+                "route": "/api/v2/poi/shops/queries",
+                "method": "GET",
+                "name": "POI Shop Queries",
+                "description": "List saved shop queries.",
+                "payload": {},
+            },
+            "poi_shop_query_add": {
+                "route": "/api/v2/poi/shops/queries",
+                "method": "POST",
+                "name": "Add POI Shop Query",
+                "description": "Create a saved shop query.",
+                "payload": {},  # body with query
+            },
+            "poi_shop_by_source": {
+                "route": "/api/v2/poi/shops/{data_source}/{source_id}",
+                "method": "GET",
+                "name": "POI Shop",
+                "description": "Get shop by external data source/id.",
+                "payload": {"data_source": "Source name", "source_id": "Source id"},
+            },
+            "poi_shops_search": {
+                "route": "/api/v2/poi/shops/search",
+                "method": "POST",
+                "name": "Search POI Shops",
+                "description": "Search shops around a location/area.",
+                "payload": {},  # body with search params
+            },
+            "poi_schools": {
+                "route": "/api/v2/poi/institutions/schools",
+                "method": "POST",
+                "name": "POI Schools",
+                "description": "Get schools near a location/geometry.",
+                "payload": {},  # body with params
+            },
+            "poi_daycare": {
+                "route": "/api/v2/poi/institutions/daycare",
+                "method": "POST",
+                "name": "POI Daycare",
+                "description": "Get daycare institutions near a location/geometry.",
+                "payload": {},  # body with params
+            },
+            "poi_public_transport": {
+                "route": "/api/v2/poi/public_transport",
+                "method": "POST",
+                "name": "POI Public Transport",
+                "description": "Public transport proximity/coverage.",
+                "payload": {},  # body with params
+            },
+            "poi_traffic": {
+                "route": "/api/v2/poi/traffic",
+                "method": "POST",
+                "name": "POI Traffic",
+                "description": "Traffic intensity metrics.",
+                "payload": {},  # body with params
+            },
+            "poi_noise": {
+                "route": "/api/v2/poi/noise",
+                "method": "POST",
+                "name": "POI Traffic Noise",
+                "description": "Traffic noise metrics.",
+                "payload": {},  # body with params
+            },
+
+            # ---------- Energy (BBR Energy from OIS) ----------
+            "energy_building": {
+                "route": "/api/v2/energy/buildings/{building_id}",
+                "method": "GET",
+                "name": "Energy From Building ID",
+                "description": "BBR energy from OIS by building id.",
+                "payload": {"building_id": "Building id"},
+            },
+            "energy_property": {
+                "route": "/api/v2/energy/properties/{bfe_number}",
+                "method": "GET",
+                "name": "Energy By Property",
+                "description": "BBR energy from OIS by BFE.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+
+            # ---------- Tinglysning - Andelsbolig ----------
+            "tingly_ab_address": {
+                "route": "/api/v2/tinglysning/andelsbolig/search/address",
+                "method": "GET",
+                "name": "Search Andelsbolig By Address",
+                "description": "Find andelsbolig by address.",
+                "payload": {"query": "address string (query param)"},
+            },
+            "tingly_ab_municipality": {
+                "route": "/api/v2/tinglysning/andelsbolig/search/municipality",
+                "method": "GET",
+                "name": "Search Andelsbolig By Municipality",
+                "description": "Find andelsbolig by municipality.",
+                "payload": {"municipality": "name/code (query param)"},
+            },
+            "tingly_ab_zip": {
+                "route": "/api/v2/tinglysning/andelsbolig/search/zip_code",
+                "method": "GET",
+                "name": "Search Andelsbolig By Zip Code",
+                "description": "Find andelsbolig by ZIP.",
+                "payload": {"zip_code": "ZIP code (query param)"},
+            },
+            "tingly_ab_person": {
+                "route": "/api/v2/tinglysning/andelsbolig/search/person",
+                "method": "GET",
+                "name": "Search Andelsbolig By Person",
+                "description": "Find andelsbolig by person.",
+                "payload": {"query": "person query (query param)"},
+            },
+            "tingly_ab_cvr": {
+                "route": "/api/v2/tinglysning/andelsbolig/search/cvr-number/{cvr_number}",
+                "method": "GET",
+                "name": "Search Andelsbolig By CVR",
+                "description": "Find andelsbolig by company CVR.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "tingly_andelsboligattest": {
+                "route": "/api/v2/tinglysning/andelsbolig/attest/{uuid}",
+                "method": "GET",
+                "name": "Andelsboligattest By UUID",
+                "description": "Fetch andelsboligattest metadata by UUID.",
+                "payload": {"uuid": "Document UUID"},
+            },
+
+            # ---------- Tinglysning - Ejendom ----------
+            "tingly_address_limited": {
+                "route": "/api/v2/tinglysning/property/search/address-limited",
+                "method": "GET",
+                "name": "Tinglysning Search by Address (Limited)",
+                "description": "Limited address search.",
+                "payload": {"query": "address string (query param)"},
+            },
+            "tingly_cadastre": {
+                "route": "/api/v2/tinglysning/property/search/cadastre/{land_lot}/{cadastre_number}",
+                "method": "GET",
+                "name": "Tinglysning Search by Cadastre",
+                "description": "Search tinglysning by cadastre.",
+                "payload": {"land_lot": "Land lot", "cadastre_number": "Cadastre number"},
+            },
+            "tingly_uma": {
+                "route": "/api/v2/tinglysning/property/search/uma/{uma}",
+                "method": "GET",
+                "name": "Tinglysning Search by UMA",
+                "description": "Search by unregistered area (umatriculeret areal).",
+                "payload": {"uma": "UMA id"},
+            },
+            "tingly_tingbogsattest_historic": {
+                "route": "/api/v2/tinglysning/tingbogsattest/historic/{uuid}",
+                "method": "GET",
+                "name": "Historic Claims By UUID",
+                "description": "Historic claims for a tingbogsattest UUID.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_ogsaalystpaa": {
+                "route": "/api/v2/tinglysning/ogsaalystpaa",
+                "method": "GET",
+                "name": "Også Lyst På",
+                "description": "Also registered on (cross-registrations).",
+                "payload": {},  # query params
+            },
+            "tingly_esr_number": {
+                "route": "/api/v2/tinglysning/property/search/esr-number/{municipality_code}/{property_number}",
+                "method": "GET",
+                "name": "Tinglysning Search by Municipality ESR",
+                "description": "Search by municipality/property number.",
+                "payload": {"municipality_code": "Municipality code", "property_number": "Property number"},
+            },
+
+            # ---------- Tinglysning - Køretøj ----------
+            "tingly_vehicle_id": {
+                "route": "/api/v2/tinglysning/vehicle/search/id/{id}",
+                "method": "GET",
+                "name": "Search Vehicle By ID",
+                "description": "Find vehicle by ID.",
+                "payload": {"id": "Vehicle id"},
+            },
+            "tingly_vehicle_cvr": {
+                "route": "/api/v2/tinglysning/vehicle/search/cvr-number/{cvr_number}",
+                "method": "GET",
+                "name": "Search Vehicle By CVR",
+                "description": "Find vehicles by company CVR.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "tingly_vehicle_person": {
+                "route": "/api/v2/tinglysning/vehicle/search/person",
+                "method": "GET",
+                "name": "Search Vehicle By Person",
+                "description": "Find vehicles by person.",
+                "payload": {"query": "person query (query param)"},
+            },
+            "tingly_bilbogsattest": {
+                "route": "/api/v2/tinglysning/bilbogsattest/{uuid}",
+                "method": "GET",
+                "name": "Bilbogsattest By UUID",
+                "description": "Fetch bilbogsattest metadata by UUID.",
+                "payload": {"uuid": "Document UUID"},
+            },
+
+            # ---------- Tinglysning - Person/Virksomhed ----------
+            "tingly_company_cvr": {
+                "route": "/api/v2/tinglysning/company/search/cvr-number/{cvr_number}",
+                "method": "GET",
+                "name": "Search Company By CVR",
+                "description": "Find company by CVR in tinglysning.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "tingly_person_name": {
+                "route": "/api/v2/tinglysning/person/search/name",
+                "method": "GET",
+                "name": "Search Person By Name",
+                "description": "Find person by name in tinglysning.",
+                "payload": {"query": "name (query param)"},
+            },
+            "tingly_person_cpr": {
+                "route": "/api/v2/tinglysning/person/search/cpr-number/{cpr_number}",
+                "method": "GET",
+                "name": "Search Person By CPR",
+                "description": "Find person by CPR in tinglysning.",
+                "payload": {"cpr_number": "CPR number"},
+            },
+            "tingly_person_company_by_uuid": {
+                "route": "/api/v2/tinglysning/person-company/{uuid}",
+                "method": "GET",
+                "name": "Person Company By UUID",
+                "description": "Get person/company record by UUID.",
+                "payload": {"uuid": "UUID"},
+            },
+
+            # ---------- Tinglysning - Virksomhed ----------
+            "tingly_company_registrations": {
+                "route": "/api/v2/tinglysning/companies/registrations/{cvr_number}",
+                "method": "GET",
+                "name": "Company Registrations",
+                "description": "Search company registrations.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+            "tingly_company_documents": {
+                "route": "/api/v2/tinglysning/companies/documents/{cvr_number}",
+                "method": "GET",
+                "name": "Company Documents",
+                "description": "Search company documents.",
+                "payload": {"cvr_number": "CVR number"},
+            },
+
+            # ---------- Tinglysning - ATD / Påtegning ----------
+            "tingly_atd_by_aliasid": {
+                "route": "/api/v2/tinglysning/atd/aliasid/{alias_id}",
+                "method": "GET",
+                "name": "ATD by Alias ID",
+                "description": "Aktuelt Tinglyst Dokument by alias id.",
+                "payload": {"alias_id": "Alias id"},
+            },
+            "tingly_paategning_by_aliasid": {
+                "route": "/api/v2/tinglysning/paategning/aliasid/{alias_id}",
+                "method": "GET",
+                "name": "Påtegninger by Alias ID",
+                "description": "Annotations by alias id.",
+                "payload": {"alias_id": "Alias id"},
+            },
+            "tingly_paategning_by_uuid": {
+                "route": "/api/v2/tinglysning/paategning/uuid/{uuid}",
+                "method": "GET",
+                "name": "Påtegninger by UUID",
+                "description": "Annotations by UUID.",
+                "payload": {"uuid": "UUID"},
+            },
+
+            # ---------- Tinglysning - Changes ----------
+            "tingly_changes_properties": {
+                "route": "/api/v2/tinglysning/changes/properties",
+                "method": "GET",
+                "name": "Changes (Properties)",
+                "description": "Change events for properties.",
+                "payload": {},  # use query params (from/to, etc.)
+            },
+            "tingly_changes_vehicles": {
+                "route": "/api/v2/tinglysning/changes/vehicles",
+                "method": "GET",
+                "name": "Changes (Vehicles)",
+                "description": "Change events for vehicles.",
+                "payload": {},
+            },
+            "tingly_changes_person_company": {
+                "route": "/api/v2/tinglysning/changes/person-company",
+                "method": "GET",
+                "name": "Changes (Person/Company)",
+                "description": "Change events for person/company.",
+                "payload": {},
+            },
+            "tingly_changes_andelsbolig": {
+                "route": "/api/v2/tinglysning/changes/andelsbolig",
+                "method": "GET",
+                "name": "Changes (Andelsbolig)",
+                "description": "Change events for andelsbolig.",
+                "payload": {},
+            },
+
+            # ---------- Tinglysning - Downloads ----------
+            "tingly_download_andelsboligattest": {
+                "route": "/api/v2/tinglysning/download/andelsboligattest/{uuid}",
+                "method": "GET",
+                "name": "Download Andelsboligattest",
+                "description": "Download andelsboligattest PDF.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_download_bilbogsattest": {
+                "route": "/api/v2/tinglysning/download/bilbogsattest/{uuid}",
+                "method": "GET",
+                "name": "Download Bilbogsattest",
+                "description": "Download bilbogsattest PDF.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_download_personbogsattest": {
+                "route": "/api/v2/tinglysning/download/personbogsattest/{uuid}",
+                "method": "GET",
+                "name": "Download Personbogsattest",
+                "description": "Download personbogsattest PDF.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_download_atd": {
+                "route": "/api/v2/tinglysning/download/atd/{uuid}",
+                "method": "GET",
+                "name": "Download ATD",
+                "description": "Download ATD PDF.",
+                "payload": {"uuid": "Document UUID"},
+            },
+            "tingly_download_dokumentanmeldelse": {
+                "route": "/api/v2/tinglysning/download/dokumentanmeldelse/{document_uuid}/{report_uuid}",
+                "method": "GET",
+                "name": "Download Dokumentanmeldelse",
+                "description": "Download document filing report.",
+                "payload": {"document_uuid": "Document UUID", "report_uuid": "Report UUID"},
+            },
+            "tingly_download_akt": {
+                "route": "/api/v2/tinglysning/download/akt/{uuid}",
+                "method": "GET",
+                "name": "Download Akt",
+                "description": "Download ACT (case file) PDF.",
+                "payload": {"uuid": "UUID"},
+            },
+            "tingly_download_annex": {
+                "route": "/api/v2/tinglysning/download/annex/{uuid}",
+                "method": "GET",
+                "name": "Download Annex",
+                "description": "Download annex PDF.",
+                "payload": {"uuid": "UUID"},
+            },
+            "tingly_convert_pdf_to_akt": {
+                "route": "/api/v2/tinglysning/convert/{pdf_id}",
+                "method": "GET",
+                "name": "Convert PDF ID to AKT UUID",
+                "description": "Convert PDF id to AKT UUID.",
+                "payload": {"pdf_id": "PDF id"},
+            },
+
+            # ---------- Minutes ----------
+            "minutes_meeting": {
+                "route": "/api/v2/minutes/meetings/{id}",
+                "method": "GET",
+                "name": "Minutes Meeting",
+                "description": "Fetch a meeting by id.",
+                "payload": {"id": "meeting id"},
+            },
+            "minutes_appendix": {
+                "route": "/api/v2/minutes/appendices/{id}",
+                "method": "GET",
+                "name": "Minutes Appendix",
+                "description": "Fetch appendix by id.",
+                "payload": {"id": "appendix id"},
+            },
+            "minutes_appendices": {
+                "route": "/api/v2/minutes/appendices",
+                "method": "GET",
+                "name": "Minutes Appendices",
+                "description": "List/search appendices.",
+                "payload": {},  # filters as query
+            },
+            "minutes_sections_list": {
+                "route": "/api/v2/minutes/sections",
+                "method": "GET",
+                "name": "Minutes Sections",
+                "description": "List/search sections by cases.",
+                "payload": {},  # filters as query
+            },
+            "minutes_section_presign": {
+                "route": "/api/v2/minutes/sections/{id}/presign",
+                "method": "GET",
+                "name": "Minutes Section Presign",
+                "description": "Presigned URL for section download.",
+                "payload": {"id": "section id"},
+            },
+            "minutes_appendix_download": {
+                "route": "/api/v2/minutes/appendices/{id}/download",
+                "method": "GET",
+                "name": "Download Minutes Appendix",
+                "description": "Download appendix file.",
+                "payload": {"id": "appendix id"},
+            },
+            "minutes_section_download": {
+                "route": "/api/v2/minutes/sections/{id}/download",
+                "method": "GET",
+                "name": "Download Minutes Section",
+                "description": "Download section file.",
+                "payload": {"id": "section id"},
+            },
+            "minutes_cases": {
+                "route": "/api/v2/minutes/cases",
+                "method": "GET",
+                "name": "Minutes Cases",
+                "description": "List/search minutes cases.",
+                "payload": {},  # filters as query
+            },
+
+            # ---------- Listings ----------
+            "listings": {
+                "route": "/api/v2/listings",
+                "method": "GET",
+                "name": "Listings",
+                "description": "List/search property listings.",
+                "payload": {},  # filters as query
+            },
+            "listings_advanced": {
+                "route": "/api/v2/listings",
+                "method": "POST",
+                "name": "Listings Advanced",
+                "description": "Advanced listings search (POST).",
+                "payload": {},  # body with filters
+            },
+            "listings_timeline": {
+                "route": "/api/v2/listings/{bfe_number}/timeline",
+                "method": "GET",
+                "name": "Listings Timeline",
+                "description": "Timeline for listings on a property.",
+                "payload": {"bfe_number": "BFE number (required)"},
+            },
+
+            # ---------- Teledata (118) ----------
+            "teledata_whatwhere": {
+                "route": "/api/v2/teledata/whatwhere",
+                "method": "GET",
+                "name": "Teledata What/Where",
+                "description": "What/Where lookup.",
+                "payload": {"query": "search string (query param)"},
+            },
+            "teledata_search": {
+                "route": "/api/v2/teledata/search",
+                "method": "GET",
+                "name": "Teledata Search",
+                "description": "General teledata search.",
+                "payload": {"query": "search string (query param)"},
+            },
+            "teledata_city": {
+                "route": "/api/v2/teledata/city",
+                "method": "GET",
+                "name": "Teledata City List",
+                "description": "List of cities.",
+                "payload": {},
+            },
+            "teledata_by_address_id": {
+                "route": "/api/v2/teledata/addresses/{address_id}",
+                "method": "GET",
+                "name": "Teledata By Address ID",
+                "description": "Teledata record by address id.",
+                "payload": {"address_id": "Address id"},
+            },
+            "teledata_by_person_id": {
+                "route": "/api/v2/teledata/persons/{person_id}",
+                "method": "GET",
+                "name": "Teledata By Person ID",
+                "description": "Teledata record by person id.",
+                "payload": {"person_id": "Person id"},
+            },
+            "teledata_by_phone": {
+                "route": "/api/v2/teledata/phone/{phone_number}",
+                "method": "GET",
+                "name": "Teledata By Phone Number",
+                "description": "Teledata record by phone number.",
+                "payload": {"phone_number": "Phone number"},
+            },
         }
 
         super().__init__(base_url, endpoints)

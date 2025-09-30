@@ -42,7 +42,7 @@ async def run_agent(
     thread_manager: Optional[ThreadManager] = None,
     native_max_auto_continues: int = 100, #previously 25
     max_iterations: int = 500, #previously 100
-    model_name: str = "anthropic/claude-sonnet-4-20250514",
+    model_name: str = "anthropic/claude-sonnet-4-5-20250929",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
     enable_context_manager: bool = True,
@@ -442,8 +442,8 @@ async def run_agent(
         # Set max_tokens based on model
         max_tokens = None
         if "sonnet" in model_name.lower():
-            # Claude 3.5 Sonnet has a limit of 8192 tokens
-            max_tokens = 8192*4 #previously 8192
+            # Sonnet models: allow higher cap; 4.5 supports large context
+            max_tokens = 128000 // 2
         elif "gpt-4" in model_name.lower():
             max_tokens = 4096
             

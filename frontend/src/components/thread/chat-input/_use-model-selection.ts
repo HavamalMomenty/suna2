@@ -7,8 +7,8 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_FREE_MODEL_ID = 'claude-sonnet-4';
-export const DEFAULT_PREMIUM_MODEL_ID = 'claude-sonnet-4';
+export const DEFAULT_FREE_MODEL_ID = 'claude-sonnet-4.5';
+export const DEFAULT_PREMIUM_MODEL_ID = 'claude-sonnet-4.5';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -29,13 +29,13 @@ export interface CustomModel {
 
 // SINGLE SOURCE OF TRUTH for all model data
 export const MODELS = {
-  // Only Claude Sonnet 4
-  'claude-sonnet-4': { 
+  // Only Claude Sonnet 4.5
+  'claude-sonnet-4.5': { 
     tier: 'premium',
     priority: 100, 
     recommended: true,
     lowQuality: false,
-    description: 'Claude Sonnet 4 - Anthropic\'s latest and most advanced AI assistant'
+    description: 'Claude Sonnet 4.5 - Anthropic\'s latest and most advanced AI assistant'
   },
   'grok-4-fast': {
     tier: 'free',
@@ -169,7 +169,7 @@ export const useModelSelection = () => {
         },
         { 
           id: DEFAULT_PREMIUM_MODEL_ID, 
-          label: 'Claude Sonnet 4', 
+          label: 'Claude Sonnet 4.5', 
           requiresSubscription: true, 
           description: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.description || MODEL_TIERS.premium.baseDescription,
           priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100

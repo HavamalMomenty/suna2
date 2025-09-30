@@ -60,8 +60,8 @@ class WorkflowConverter:
         
         logger.info(f"Final enabled_tools list: {enabled_tools}")
 
-        # Extract model from input node configuration, default to Claude Sonnet 4
-        selected_model = "anthropic/claude-sonnet-4-20250514"
+        # Extract model from input node configuration, default to Claude Sonnet 4.5
+        selected_model = "anthropic/claude-sonnet-4-5-20250929"
         if input_config:
             # Look for model in input node data
             for node in nodes:
@@ -73,7 +73,8 @@ class WorkflowConverter:
                         if not selected_model.startswith(('anthropic/', 'openai/', 'google/', 'meta-llama/', 'mistralai/', 'deepseek/')):
                             # Map common model names to their full IDs
                             model_mapping = {
-                                'claude-sonnet-4': 'anthropic/claude-sonnet-4-20250514',
+                                'claude-sonnet-4': 'anthropic/claude-sonnet-4-5-20250929',
+                                'claude-sonnet-4.5': 'anthropic/claude-sonnet-4-5-20250929',
                                 'claude-sonnet-3.7': 'anthropic/claude-3-7-sonnet-latest',
                                 'claude-3.5': 'anthropic/claude-3-5-sonnet-latest',
                                 'claude-3-5-sonnet-latest': 'anthropic/claude-3-5-sonnet-latest',
