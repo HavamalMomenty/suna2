@@ -73,7 +73,6 @@ class WorkflowConverter:
                         if not selected_model.startswith(('anthropic/', 'openai/', 'google/', 'meta-llama/', 'mistralai/', 'deepseek/')):
                             # Map common model names to their full IDs
                             model_mapping = {
-                                'claude-sonnet-4': 'anthropic/claude-sonnet-4-5-20250929',
                                 'claude-sonnet-4.5': 'anthropic/claude-sonnet-4-5-20250929',
                                 'claude-sonnet-3.7': 'anthropic/claude-3-7-sonnet-latest',
                                 'claude-3.5': 'anthropic/claude-3-5-sonnet-latest',

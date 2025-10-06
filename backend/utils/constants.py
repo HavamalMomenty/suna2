@@ -95,7 +95,6 @@ MODEL_NAME_ALIASES = {
     "sonnet-3.7": "anthropic/claude-3-7-sonnet-latest",
     "sonnet-3.5": "anthropic/claude-3-5-sonnet-latest",
     "haiku-3.5": "anthropic/claude-3-5-haiku-latest",
-    "claude-sonnet-4": "anthropic/claude-sonnet-4-5-20250929",
     "claude-sonnet-4.5": "anthropic/claude-sonnet-4-5-20250929",
     # "gpt-4.1": "openai/gpt-4.1-2025-04-14",  # Commented out in constants.py
     "gpt-4o": "openai/gpt-4o",

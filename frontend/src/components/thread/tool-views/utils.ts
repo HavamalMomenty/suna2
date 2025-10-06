@@ -508,11 +508,45 @@ export function extractFileContent(
 }
 
 // Helper to process and clean file content
-function processFileContent(content: string): string {
-  if (!content) return content;
+function processFileContent(content: unknown): string {
+  // Coerce to string safely
+  let contentStr: string = '';
+  if (typeof content === 'string') {
+    contentStr = content;
+  } else if (content != null) {
+    // Try existing normalizer first (handles many legacy shapes)
+    const normalized = normalizeContentToString(content as any);
+    if (typeof normalized === 'string') {
+      contentStr = normalized;
+    } else {
+      try {
+        // Handle ArrayBuffer/TypedArray
+        if (
+          typeof ArrayBuffer !== 'undefined' &&
+          (content instanceof ArrayBuffer || (ArrayBuffer as any).isView?.(content))
+        ) {
+          try {
+            const decoder = new TextDecoder('utf-8');
+            const bytes = content instanceof Uint8Array
+              ? content
+              : new Uint8Array((content as any).buffer ?? content);
+            contentStr = decoder.decode(bytes);
+          } catch {
+            contentStr = String(content);
+          }
+        } else {
+          contentStr = JSON.stringify(content);
+        }
+      } catch {
+        contentStr = String(content);
+      }
+    }
+  }
+
+  if (!contentStr) return '';
 
   // Handle escaped characters
-  return content
+  return contentStr
     .replace(/\\n/g, '\n') // Replace \n with actual newlines
     .replace(/\\t/g, '\t') // Replace \t with actual tabs
     .replace(/\\r/g, '') // Remove \r

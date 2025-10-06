@@ -105,7 +105,7 @@ export async function signUp(prevState: any, formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_URL}/auth/callback?returnUrl=${returnUrl}`,
+      emailRedirectTo: `${origin}/auth/callback?returnUrl=${returnUrl}`,
     },
   });
 
@@ -115,21 +115,12 @@ export async function signUp(prevState: any, formData: FormData) {
 
   const userName = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // Send welcome email after account creation
+  sendWelcomeEmail(email, userName);
 
-  if (signInData) {
-    sendWelcomeEmail(email, userName);
-  }
-
-  if (signInError) {
-    return {
-      message:
-        'Account created! Check your email to confirm your registration.',
-    };
-  }
+  return {
+    message: 'Account created! Check your email to confirm your registration.',
+  };
 
   // Use client-side navigation instead of server-side redirect
   return { success: true, redirectTo: returnUrl || '/dashboard' };
