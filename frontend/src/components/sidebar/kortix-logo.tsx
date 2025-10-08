@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 interface KortixLogoProps {
   size?: number;
 }
-export function KortixLogo({ size = 120 }: KortixLogoProps) {
+export function KortixLogo({ size = 40 }: KortixLogoProps) {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -18,7 +18,7 @@ export function KortixLogo({ size = 120 }: KortixLogoProps) {
 
   return (
     <Image
-        src="/Logo_Thylander_Pos_RGB.svg"
+        src="/Logo_T_Pos_RGB.svg"
         alt="Thylander"
         width={size}
         height={size}

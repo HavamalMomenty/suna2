@@ -26,6 +26,7 @@ from utils.logger import logger
 from utils.auth_utils import get_account_id_from_thread
 from services.billing import check_billing_status
 from agent.tools.sb_vision_tool import SandboxVisionTool
+from agent.tools.knowledge_base_tool import SandboxKnowledgeBaseTool
 from services.langfuse import langfuse
 from langfuse.client import StatefulTraceClient
 from services.langfuse import langfuse
@@ -42,7 +43,7 @@ async def run_agent(
     thread_manager: Optional[ThreadManager] = None,
     native_max_auto_continues: int = 100, #previously 25
     max_iterations: int = 500, #previously 100
-    model_name: str = "anthropic/claude-sonnet-4-20250514",
+    model_name: str = "anthropic/claude-sonnet-4-5-20250929",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
     enable_context_manager: bool = True,
@@ -110,12 +111,15 @@ async def run_agent(
         thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(LlamaParseDocumentTool, project_id=project_id, thread_manager=thread_manager)
+        thread_manager.add_tool(SandboxKnowledgeBaseTool, project_id=project_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY:
             thread_manager.add_tool(DataProvidersTool, user_id=user_id)
     else:
         logger.info("Custom agent specified - registering only enabled tools")
         thread_manager.add_tool(ExpandMessageTool, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(MessageTool)
+        # Always register knowledge base tool regardless of configuration
+        thread_manager.add_tool(SandboxKnowledgeBaseTool, project_id=project_id, thread_manager=thread_manager)
         if enabled_tools.get('sb_shell_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxShellTool, project_id=project_id, thread_manager=thread_manager)
         if enabled_tools.get('sb_files_tool', {}).get('enabled', False):
@@ -228,25 +232,43 @@ async def run_agent(
         system_content = default_system_content
         logger.info("Using default system prompt with real estate analysis")
     
-    if await is_enabled("knowledge_base"):
-        try:
-            from services.supabase import DBConnection
-            kb_db = DBConnection()
-            kb_client = await kb_db.client
+    try:
+        from services.supabase import DBConnection
+        kb_db = DBConnection()
+        kb_client = await kb_db.client
+        
+        logger.info(f"Fetching knowledge base context for account {account_id}")
+        
+        # Get all user-global KB entries directly by account_id
+        kb_entries = await kb_client.table('knowledge_base_entries').select('name, description, content, content_tokens').eq('account_id', account_id).is_('thread_id', 'null').is_('project_id', 'null').eq('is_active', True).order('created_at', desc=False).execute()
+        
+        if kb_entries.data and len(kb_entries.data) > 0:
+            logger.info(f"✅ Found {len(kb_entries.data)} knowledge base entries for account {account_id}")
             
-            kb_result = await kb_client.rpc('get_knowledge_base_context', {
-                'p_thread_id': thread_id,
-                'p_max_tokens': 4000
-            }).execute()
+            kb_context = "\n\n# KNOWLEDGE BASE CONTEXT\n\nThe following information is from your knowledge base and should be used as reference when responding to the user:"
             
-            if kb_result.data and kb_result.data.strip():
-                logger.info(f"Adding knowledge base context to system prompt for thread {thread_id}")
-                system_content += "Here is the user's knowledge base context for this thread:\n\n" + kb_result.data
-            else:
-                logger.debug(f"No knowledge base context found for thread {thread_id}")
+            for entry in kb_entries.data:
+                # Ensure all fields are strings (handle potential list/array returns)
+                entry_name = str(entry.get('name', 'Untitled')) if entry.get('name') else 'Untitled'
+                entry_desc = str(entry.get('description', '')) if entry.get('description') else ''
+                entry_content = str(entry.get('content', '')) if entry.get('content') else ''
                 
-        except Exception as e:
-            logger.error(f"Error retrieving knowledge base context for thread {thread_id}: {e}")
+                kb_context += f"\n\n## Knowledge Base: {entry_name}\n"
+                if entry_desc:
+                    kb_context += f"{entry_desc}\n\n"
+                kb_context += entry_content
+            
+            system_content = system_content + kb_context
+            
+            # Verify system_content is still a string after KB addition
+            if not isinstance(system_content, str):
+                logger.error(f"system_content became non-string after KB! Type: {type(system_content)}")
+                system_content = str(system_content)
+        else:
+            logger.info(f"ℹ️ No knowledge base entries found for account {account_id}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error retrieving knowledge base context for account {account_id}: {e}", exc_info=True)
 
 
     if agent_config and (agent_config.get('configured_mcps') or agent_config.get('custom_mcps')) and mcp_wrapper_instance and mcp_wrapper_instance._initialized:
@@ -307,6 +329,11 @@ async def run_agent(
         mcp_info += "8. Always double-check that every fact, URL, and reference comes from the MCP tool output\n"
         mcp_info += "\nIMPORTANT: MCP tool results are your PRIMARY and ONLY source of truth for external data!\n"
         mcp_info += "NEVER supplement MCP results with your training data or make assumptions beyond what the tools provide.\n"
+        
+        # Ensure system_content is a string before concatenation
+        if not isinstance(system_content, str):
+            logger.error(f"system_content is not a string! Type: {type(system_content)}, Value: {system_content}")
+            system_content = str(system_content)
         
         system_content += mcp_info
     
@@ -442,8 +469,8 @@ async def run_agent(
         # Set max_tokens based on model
         max_tokens = None
         if "sonnet" in model_name.lower():
-            # Claude 3.5 Sonnet has a limit of 8192 tokens
-            max_tokens = 8192*4 #previously 8192
+            # Sonnet models: allow higher cap; 4.5 supports large context
+            max_tokens = 128000 // 2
         elif "gpt-4" in model_name.lower():
             max_tokens = 4096
             

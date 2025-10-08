@@ -56,7 +56,7 @@ class WorkflowExecutor:
             
             main_step = workflow.steps[0]
             system_prompt = main_step.config.get("system_prompt", "")
-            selected_model = main_step.config.get("model", "anthropic/claude-sonnet-4-20250514")
+            selected_model = main_step.config.get("model", "anthropic/claude-sonnet-4-5-20250929")
 
             if variables:
                 variables_text = "\n\n## Workflow Variables\n"

@@ -8,8 +8,9 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Database, Key } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { handleFiles } from './file-upload-handler';
 import { MessageInput } from './message-input';
 import { AttachmentGroup } from '../attachment-group';
@@ -17,6 +18,8 @@ import { useModelSelection } from './_use-model-selection';
 import { AgentSelector } from './agent-selector';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
+import { TokenManagementModal } from '@/components/TokenManagementModal';
+import KnowledgeBaseModal from '@/components/KnowledgeBaseModal';
 
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
@@ -88,6 +91,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [showTokenModal, setShowTokenModal] = useState(false);
+    const [showKbModal, setShowKbModal] = useState(false);
 
     const {
       selectedModel,
@@ -307,6 +312,31 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </div>
           </motion.div>
         )}
+
+        {/* Quick access buttons below chat input */}
+        <div className="flex items-center gap-2 mt-1 justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowKbModal(true)}
+            className="text-xs h-7"
+          >
+            <Database className="h-3.5 w-3.5 mr-1.5" />
+            Knowledge
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowTokenModal(true)}
+            className="text-xs h-7"
+          >
+            <Key className="h-3.5 w-3.5 mr-1.5" />
+            Connect API
+          </Button>
+        </div>
+
+        <TokenManagementModal open={showTokenModal} onOpenChange={setShowTokenModal} />
+        <KnowledgeBaseModal open={showKbModal} onOpenChange={setShowKbModal} />
       </div>
     );
   },

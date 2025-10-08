@@ -168,6 +168,150 @@ export type WorkflowEdge = {
   targetHandle?: string;
 };
 
+// Knowledge Base Types
+export type KnowledgeBaseEntry = {
+  entry_id: string;
+  name: string;
+  description?: string | null;
+  content: string;
+  usage_context: 'always' | 'on_request' | 'contextual';
+  is_active: boolean;
+  content_tokens?: number | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type KnowledgeBaseListResponse = {
+  entries: KnowledgeBaseEntry[];
+  total_count: number;
+  total_tokens: number;
+};
+
+// Knowledge Base API helpers
+export const listKbEntries = async (threadId: string, includeInactive = false): Promise<KnowledgeBaseListResponse> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}`);
+  if (includeInactive) url.searchParams.set('include_inactive', 'true');
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB list failed: ${res.status} ${res.statusText} ${text}`);
+  }
+  return res.json();
+};
+
+export const createKbEntry = async (
+  threadId: string,
+  payload: { name: string; description?: string; content: string; usage_context?: 'always' | 'on_request' | 'contextual' }
+): Promise<KnowledgeBaseEntry> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const res = await fetch(`${API_URL}/knowledge-base/threads/${threadId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB create failed: ${res.status} ${res.statusText} ${text}`);
+  }
+  return res.json();
+};
+
+export const updateKbEntry = async (
+  entryId: string,
+  patch: Partial<Pick<KnowledgeBaseEntry, 'name' | 'description' | 'content' | 'usage_context' | 'is_active'>>
+): Promise<KnowledgeBaseEntry> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const res = await fetch(`${API_URL}/knowledge-base/${entryId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB update failed: ${res.status} ${res.statusText} ${text}`);
+  }
+  return res.json();
+};
+
+export const deleteKbEntry = async (entryId: string): Promise<void> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const res = await fetch(`${API_URL}/knowledge-base/${entryId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB delete failed: ${res.status} ${res.statusText} ${text}`);
+  }
+};
+
+export const getKbEntry = async (entryId: string): Promise<KnowledgeBaseEntry> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const res = await fetch(`${API_URL}/knowledge-base/${entryId}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB get failed: ${res.status} ${res.statusText} ${text}`);
+  }
+  return res.json();
+};
+
+export const getKbContext = async (
+  threadId: string,
+  maxTokens = 4000
+): Promise<{ context: string | null; max_tokens: number; thread_id: string }> => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new NoAccessTokenAvailableError();
+
+  const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}/context`);
+  url.searchParams.set('max_tokens', String(maxTokens));
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`KB context failed: ${res.status} ${res.statusText} ${text}`);
+  }
+  return res.json();
+};
+
 // Project APIs
 export const getProjects = async (): Promise<Project[]> => {
   try {

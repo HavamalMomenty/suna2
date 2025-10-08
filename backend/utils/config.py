@@ -124,7 +124,7 @@ class Configuration:
     AWS_REGION_NAME: Optional[str] = None
     
     # Model configuration
-    MODEL_TO_USE: Optional[str] = "anthropic/claude-sonnet-4-20250514"
+    MODEL_TO_USE: Optional[str] = "anthropic/claude-sonnet-4-5-20250929"
     
     # Supabase configuration
     SUPABASE_URL: str
