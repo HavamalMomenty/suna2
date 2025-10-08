@@ -54,12 +54,6 @@ async def get_thread_knowledge_base(
     include_inactive: bool = False,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get all knowledge base entries for a thread"""
     try:
         client = await db.client
@@ -109,12 +103,6 @@ async def create_knowledge_base_entry(
     entry_data: CreateKnowledgeBaseEntryRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Create a new knowledge base entry for a thread"""
     try:
         client = await db.client
@@ -124,8 +112,10 @@ async def create_knowledge_base_entry(
         
         account_id = thread_result.data[0]['account_id']
         
+        # Persist entries to the user's account scope so they are available across all threads/projects
         insert_data = {
-            'thread_id': thread_id,
+            'thread_id': None,  # account-global by default
+            'project_id': None,
             'account_id': account_id,
             'name': entry_data.name,
             'description': entry_data.description,
@@ -164,12 +154,6 @@ async def update_knowledge_base_entry(
     entry_data: UpdateKnowledgeBaseEntryRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Update a knowledge base entry"""
     try:
         client = await db.client
@@ -222,12 +206,6 @@ async def delete_knowledge_base_entry(
     entry_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-
     """Delete a knowledge base entry"""
     try:
         client = await db.client
@@ -250,11 +228,6 @@ async def get_knowledge_base_entry(
     entry_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
     """Get a specific knowledge base entry"""
     try:
         client = await db.client
@@ -289,12 +262,6 @@ async def get_knowledge_base_context(
     max_tokens: int = 4000,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
     """Get knowledge base context for agent prompts"""
     try:
         client = await db.client
