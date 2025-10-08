@@ -1271,29 +1271,13 @@ async def initiate_agent_with_files(
         else:
             logger.info(f"🔍 NOT WORKFLOW EXECUTION: is_workflow_execution={is_workflow_execution}, workflow_id={workflow_id}")
 
-        # 5. Upload configure job files to Sandbox (if any)
+        # 5. Upload user-attached files to Sandbox (if any)
+        # All user-attached files go to /workspace/ (both for regular agent and workflow runs)
+        # Workflow template files are handled separately above and go to /workspace/utility/
         message_content = prompt
         if files:
-            # Determine upload directory based on execution type
-            if is_workflow_execution:
-                # For workflow execution, configure job files go to /workspace/
-                upload_dir = "/workspace"
-                logger.info(f"Workflow execution detected, uploading configure job files to {upload_dir}")
-            else:
-                # For regular agent execution, files go to /workspace/utility/
-                upload_dir = "/workspace/utility"
-                try:
-                    if hasattr(sandbox, 'fs') and hasattr(sandbox.fs, 'create_folder'):
-                        sandbox.fs.create_folder(upload_dir, "755")
-                        logger.info(f"Created utility directory: {upload_dir}")
-                    else:
-                        # Fallback: Create directory by creating a temporary file and then removing it
-                        temp_file = f"{upload_dir}/.temp"
-                        sandbox.fs.upload_file(b"", temp_file)
-                        sandbox.fs.delete_file(temp_file)
-                        logger.info(f"Created utility directory (fallback method): {upload_dir}")
-                except Exception as e:
-                    logger.warning(f"Utility directory may already exist or creation failed: {e}")
+            upload_dir = "/workspace"
+            logger.info(f"Uploading user-attached files to {upload_dir}")
             
             successful_uploads = []
             failed_uploads = []
