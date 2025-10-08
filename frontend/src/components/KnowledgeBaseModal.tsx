@@ -244,10 +244,10 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-destructive border-destructive"
+                        className="text-destructive border-destructive hover:bg-destructive hover:text-white"
                         onClick={() => confirmAndDelete(entry.entry_id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-1 text-destructive" /> Delete
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     </div>
                   </div>

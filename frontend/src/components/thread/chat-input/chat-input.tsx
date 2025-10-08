@@ -314,7 +314,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         )}
 
         {/* Quick access buttons below chat input */}
-        <div className="flex items-center gap-2 mt-1 justify-end">
+        <div className="flex items-center gap-2 -mt-1 justify-end">
           <Button
             variant="ghost"
             size="sm"
