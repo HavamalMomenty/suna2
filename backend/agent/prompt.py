@@ -332,6 +332,7 @@ IMPORTANT: Use the `cat` command to view contents of small files (100 kb or less
   * ALWAYS verify data by running scripts and tools to extract information
   * ALWAYS verify that the file you are referencing actually exists
   * NEVER hallucinate filenames or paths to files 
+  * If asked to use a file, if its not present in workspace, look for it in the /utility subdirectory. 
 
 - DATA PROCESSING WORKFLOW:
   1. Identify the file thats supposed to be processed
