@@ -98,7 +98,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       selectedModel,
       setSelectedModel: handleModelChange,
       subscriptionStatus,
-      allModels: modelOptions,
+      availableModels: modelOptions,
       canAccessModel,
       getActualModelId,
       refreshCustomModels,

@@ -4,6 +4,7 @@ import { useSubscription } from '@/hooks/react-query/subscriptions/use-subscript
 import { useState, useEffect, useMemo } from 'react';
 import { isLocalMode } from '@/lib/config';
 import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model';
+import { useIsAdmin } from '@/hooks/use-admin';
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
@@ -128,6 +129,7 @@ export const useModelSelection = () => {
   const { data: modelsData, isLoading: isLoadingModels } = useAvailableModels({
     refetchOnMount: false,
   });
+  const { data: isAdmin, isLoading: isLoadingAdmin } = useIsAdmin();
   
   const subscriptionStatus: SubscriptionStatus = subscriptionData?.status === 'active' 
     ? 'active' 
@@ -169,7 +171,7 @@ export const useModelSelection = () => {
         },
         { 
           id: DEFAULT_PREMIUM_MODEL_ID, 
-          label: 'Claude Sonnet 4.5', 
+          label: 'Node', 
           requiresSubscription: true, 
           description: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.description || MODEL_TIERS.premium.baseDescription,
           priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
@@ -197,6 +199,11 @@ export const useModelSelection = () => {
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
+          
+          // Rename Claude Sonnet 4.5 to "Node" in the UI
+          if (shortName === 'claude-sonnet-4.5') {
+            cleanLabel = 'Node';
+          }
           
           // Get model data from our central MODELS constant
           const modelData = MODELS[shortName] || {};
@@ -255,12 +262,27 @@ export const useModelSelection = () => {
 
   // Get filtered list of models the user can access (no additional sorting)
   const availableModels = useMemo(() => {
-    return isLocalMode() 
+    let filteredModels = isLocalMode() 
       ? MODEL_OPTIONS 
       : MODEL_OPTIONS.filter(model => 
           canAccessModel(subscriptionStatus, model.requiresSubscription)
         );
-  }, [MODEL_OPTIONS, subscriptionStatus]);
+    
+    // For non-admin users, only show recommended models (applies in all environments)
+    if (!isAdmin) {
+      console.log('Filtering models for non-admin user. isAdmin:', isAdmin);
+      filteredModels = filteredModels.filter(model => {
+        const modelData = MODELS[model.id];
+        const isRecommended = modelData?.recommended === true;
+        console.log(`Model ${model.id}: recommended=${isRecommended}`);
+        return isRecommended;
+      });
+    } else {
+      console.log('Showing all models for admin user. isAdmin:', isAdmin);
+    }
+    
+    return filteredModels;
+  }, [MODEL_OPTIONS, subscriptionStatus, isAdmin]);
 
   // Initialize selected model from localStorage or defaults
   useEffect(() => {

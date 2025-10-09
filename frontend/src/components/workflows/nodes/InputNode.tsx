@@ -42,7 +42,7 @@ const InputNode = memo(({ data, selected, id }: NodeProps) => {
   const {
     selectedModel,
     setSelectedModel,
-    allModels,
+    availableModels: allModels,
     canAccessModel,
     subscriptionStatus,
     refreshCustomModels
@@ -179,7 +179,7 @@ const InputNode = memo(({ data, selected, id }: NodeProps) => {
         <div>
           <Label className="text-xs font-medium text-muted-foreground">Model</Label>
           <p className="text-sm mt-1 text-foreground">
-            {allModels.find(m => m.id === currentModel)?.label || currentModel || "Claude Sonnet 4.5"}
+            {allModels.find(m => m.id === currentModel)?.label || currentModel || "Node"}
           </p>
         </div>
         <div>
