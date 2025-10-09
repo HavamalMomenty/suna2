@@ -631,6 +631,79 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                         const parsedContent = safeJsonParse<ParsedContent>(message.content, {});
                                                                         const msgKey = message.message_id || `submsg-assistant-${msgIndex}`;
                                                                         
+                                                                        // Check if this message contains an image
+                                                                        // Handle both direct image data and nested content.image structure
+                                                                        let imageData = (parsedContent as any).image;
+                                                                        let caption = (parsedContent as any).content || "";
+                                                                        
+                                                                        // If parsedContent.content is a string, try parsing it again (double-encoded JSON)
+                                                                        if (!imageData && typeof parsedContent.content === 'string') {
+                                                                            try {
+                                                                                const nestedContent = JSON.parse(parsedContent.content);
+                                                                                imageData = nestedContent.image;
+                                                                                caption = nestedContent.content || "";
+                                                                            } catch (e) {
+                                                                                // Not double-encoded, continue normally
+                                                                            }
+                                                                        }
+                                                                        
+                                                                        // Render image messages
+                                                                        if (imageData && imageData.base64) {
+                                                                            const imageType = imageData.type;
+                                                                            
+                                                                            // Different rendering based on image type
+                                                                            if (imageType === 'logo_welcome') {
+                                                                                elements.push(
+                                                                                    <div key={msgKey} className={assistantMessageCount > 0 ? "mt-4" : ""}>
+                                                                                        <img 
+                                                                                            src={`data:${imageData.mime_type};base64,${imageData.base64}`}
+                                                                                            alt="Welcome Logo"
+                                                                                            className="w-16 h-16 rounded-md"
+                                                                                        />
+                                                                                    </div>
+                                                                                );
+                                                                            } else if (imageType === 'chat_screenshot' || imageType === 'user_feedback_screenshot') {
+                                                                                // Chat screenshots (property images) and user feedback screenshots
+                                                                                elements.push(
+                                                                                    <div key={msgKey} className={assistantMessageCount > 0 ? "mt-4" : ""}>
+                                                                                        <div className="border border-border rounded-lg overflow-hidden bg-muted/30 max-w-2xl">
+                                                                                            {caption && (
+                                                                                                <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                                                                                                    <p className="text-sm text-muted-foreground">{caption}</p>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <img 
+                                                                                                src={`data:${imageData.mime_type};base64,${imageData.base64}`}
+                                                                                                alt={caption || "Screenshot"}
+                                                                                                className="w-full h-auto"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            } else {
+                                                                                // Generic image rendering for other types
+                                                                                elements.push(
+                                                                                    <div key={msgKey} className={assistantMessageCount > 0 ? "mt-4" : ""}>
+                                                                                        <div className="border border-border rounded-lg overflow-hidden max-w-2xl">
+                                                                                            {caption && (
+                                                                                                <div className="px-3 py-2 bg-muted/50 border-b border-border">
+                                                                                                    <p className="text-sm text-muted-foreground">{caption}</p>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <img 
+                                                                                                src={`data:${imageData.mime_type};base64,${imageData.base64}`}
+                                                                                                alt={caption || "Image"}
+                                                                                                className="w-full h-auto"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            }
+                                                                            
+                                                                            assistantMessageCount++;
+                                                                            return;
+                                                                        }
+                                                                        
                                                                         if (!parsedContent.content) return;
 
                                                                         const renderedContent = renderMarkdownContent(

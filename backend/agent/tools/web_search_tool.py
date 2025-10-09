@@ -5,19 +5,22 @@ from agentpress.tool import Tool, ToolResult, openapi_schema, xml_schema
 from utils.config import config
 from sandbox.tool_base import SandboxToolsBase
 from agentpress.thread_manager import ThreadManager
+from agent.image_manager import ImageManager
 import json
 import os
 import datetime
 import asyncio
 import logging
+import base64
 
 # TODO: add subpages, etc... in filters as sometimes its necessary 
 
 class SandboxWebSearchTool(SandboxToolsBase):
     """Tool for performing web searches using Tavily API and web scraping using Firecrawl."""
 
-    def __init__(self, project_id: str, thread_manager: ThreadManager):
+    def __init__(self, project_id: str, thread_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
+        self.thread_id = thread_id
         # Load environment variables
         load_dotenv()
         # Use API keys from config
@@ -32,6 +35,9 @@ class SandboxWebSearchTool(SandboxToolsBase):
 
         # Tavily asynchronous search client
         self.tavily_client = AsyncTavilyClient(api_key=self.tavily_api_key)
+        
+        # Track if we've captured the first search image
+        self._first_search_image_captured = False
 
     @openapi_schema({
         "type": "function",
@@ -117,6 +123,10 @@ class SandboxWebSearchTool(SandboxToolsBase):
             # Check if we have actual results or an answer
             results = search_response.get('results', [])
             answer = search_response.get('answer', '')
+            images = search_response.get('images', [])
+            
+            # Capture first search image for user feedback (if this is first search)
+            await self._maybe_add_first_search_image(query, images)
             
             # Return the complete Tavily response 
             # This includes the query, answer, results, images and more
@@ -143,6 +153,66 @@ class SandboxWebSearchTool(SandboxToolsBase):
             if len(error_message) > 200:
                 simplified_message += "..."
             return self.fail_response(simplified_message)
+    
+    async def _maybe_add_first_search_image(self, query: str, images: list):
+        """
+        Add a user feedback screenshot for the first web search.
+        
+        Args:
+            query: The search query
+            images: List of image URLs from Tavily results
+        """
+        try:
+            # Only capture the first search
+            if self._first_search_image_captured:
+                logging.info(f"⏭️  First search image already captured, skipping for query: {query}")
+                return
+            
+            if not images or len(images) == 0:
+                logging.warning(f"No images in search results for query: {query}")
+                return
+            
+            logging.info(f"📸 Capturing FIRST search result image for query: '{query}'")
+            logging.info(f"📸 Found {len(images)} images, using first one: {images[0]}")
+            
+            # Download the first image
+            first_image_url = images[0]
+            
+            try:
+                async with httpx.AsyncClient() as http_client:
+                    response = await http_client.get(first_image_url, timeout=10.0)
+                    if response.status_code == 200:
+                        image_base64 = base64.b64encode(response.content).decode('utf-8')
+                        logging.info(f"📸 Downloaded image, size: {len(image_base64)} characters")
+                        
+                        # Create image manager
+                        image_manager = ImageManager(self.thread_manager, self.thread_id)
+                        
+                        # Create caption
+                        caption = f"🔍 First search result for: \"{query}\""
+                        logging.info(f"📸 Caption: {caption}")
+                        
+                        # Add screenshot to conversation
+                        logging.info(f"📸 Calling add_screenshot_message...")
+                        success = await image_manager.add_screenshot_message(
+                            screenshot_base64=image_base64,
+                            caption=caption,
+                            source="web_search"
+                        )
+                        
+                        if success:
+                            self._first_search_image_captured = True
+                            logging.info("✅ Successfully added first search image to conversation!")
+                        else:
+                            logging.error("❌ Failed to add first search image - add_screenshot_message returned False")
+                    else:
+                        logging.warning(f"Failed to download image: HTTP {response.status_code}")
+            except Exception as e:
+                logging.error(f"Error downloading search image: {e}", exc_info=True)
+                
+        except Exception as e:
+            logging.error(f"❌ Error in _maybe_add_first_search_image: {e}", exc_info=True)
+            # Don't fail the search if image capture fails
 
     @openapi_schema({
         "type": "function",

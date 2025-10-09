@@ -9,6 +9,7 @@ from agentpress.thread_manager import ThreadManager
 from sandbox.tool_base import SandboxToolsBase
 from utils.logger import logger
 from utils.s3_upload_utils import upload_base64_image
+from agent.image_manager import ImageManager
 
 
 class SandboxBrowserTool(SandboxToolsBase):
@@ -17,6 +18,50 @@ class SandboxBrowserTool(SandboxToolsBase):
     def __init__(self, project_id: str, thread_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
         self.thread_id = thread_id
+        self._first_navigation_captured = False  # Track if we've captured the first navigation
+
+    async def _maybe_add_first_navigation_screenshot(self, screenshot_base64: str, url: str, title: str):
+        """
+        Add a user feedback screenshot for the first browser navigation.
+        
+        Args:
+            screenshot_base64: Base64 encoded screenshot data
+            url: The URL that was navigated to
+            title: The page title
+        """
+        try:
+            # Only capture the first navigation
+            if self._first_navigation_captured:
+                logger.info(f"⏭️  First navigation already captured, skipping screenshot for {url}")
+                return
+            
+            logger.info(f"📸 Capturing FIRST navigation screenshot for URL: {url}, title: {title}")
+            logger.info(f"📸 Screenshot data length: {len(screenshot_base64)} characters")
+            
+            # Create image manager
+            image_manager = ImageManager(self.thread_manager, self.thread_id)
+            
+            # Create caption
+            caption = f"🌐 First page visited: {title or url}"
+            logger.info(f"📸 Caption: {caption}")
+            
+            # Add screenshot to conversation
+            logger.info(f"📸 Calling add_screenshot_message...")
+            success = await image_manager.add_screenshot_message(
+                screenshot_base64=screenshot_base64,
+                caption=caption,
+                source="browser_navigation"
+            )
+            
+            if success:
+                self._first_navigation_captured = True
+                logger.info("✅ Successfully added first navigation screenshot to conversation!")
+            else:
+                logger.error("❌ Failed to add first navigation screenshot - add_screenshot_message returned False")
+                
+        except Exception as e:
+            logger.error(f"❌ Error in _maybe_add_first_navigation_screenshot: {e}", exc_info=True)
+            # Don't fail the navigation if screenshot capture fails
 
     def _validate_base64_image(self, base64_string: str, max_size_mb: int = 10) -> tuple[bool, str]:
         """
@@ -150,6 +195,7 @@ class SandboxBrowserTool(SandboxToolsBase):
 
                     if "screenshot_base64" in result:
                         try:
+                            logger.info(f"🖼️  Screenshot detected in result for endpoint: {endpoint}")
                             # Comprehensive validation of the base64 image data
                             screenshot_data = result["screenshot_base64"]
                             is_valid, validation_message = self._validate_base64_image(screenshot_data)
@@ -159,6 +205,16 @@ class SandboxBrowserTool(SandboxToolsBase):
                                 image_url = await upload_base64_image(screenshot_data)
                                 result["image_url"] = image_url
                                 logger.debug(f"Uploaded screenshot to {image_url}")
+                                
+                                # Check if this is the first navigation (for user feedback screenshot)
+                                logger.info(f"🔍 Checking if endpoint '{endpoint}' == 'navigate_to': {endpoint == 'navigate_to'}")
+                                if endpoint == "navigate_to":
+                                    logger.info(f"📸 Calling _maybe_add_first_navigation_screenshot for {result.get('url', '')}")
+                                    await self._maybe_add_first_navigation_screenshot(
+                                        screenshot_data, 
+                                        result.get("url", ""),
+                                        result.get("title", "")
+                                    )
                             else:
                                 logger.warning(f"Screenshot validation failed: {validation_message}")
                                 result["image_validation_error"] = validation_message

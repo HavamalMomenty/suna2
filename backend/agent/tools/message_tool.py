@@ -1,6 +1,9 @@
 from typing import List, Optional, Union
 from agentpress.tool import Tool, ToolResult, openapi_schema, xml_schema
 from utils.logger import logger
+from agentpress.thread_manager import ThreadManager
+from agent.image_manager import ImageManager
+import json
 
 class MessageTool(Tool):
     """Tool for user communication and interaction.
@@ -9,8 +12,10 @@ class MessageTool(Tool):
     attachments and user takeover suggestions.
     """
 
-    def __init__(self):
+    def __init__(self, thread_id: Optional[str] = None, thread_manager: Optional[ThreadManager] = None):
         super().__init__()
+        self.thread_id = thread_id
+        self.thread_manager = thread_manager
 
     # Commented out as we are just doing this via prompt as there is no need to call it as a tool
 
@@ -245,6 +250,139 @@ If you encounter any issues or need to take additional steps, please let me know
             return self.success_response({"status": "complete"})
         except Exception as e:
             return self.fail_response(f"Error entering complete state: {str(e)}")
+    
+    @openapi_schema({
+        "type": "function",
+        "function": {
+            "name": "show_chat_screenshot",
+            "description": "Display the most recent browser screenshot in the chat for the user to see. Use this ONLY for property-related queries when showing real estate images (e.g., property photos from bbr.dk or matriklen.dk orthophotos). This tool takes the latest browser screenshot and makes it visible in the conversation. IMPORTANT: Only use this for property images - not for general web browsing. The screenshot should show the property image clearly before calling this tool.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "caption": {
+                        "type": "string",
+                        "description": "Caption to display with the screenshot. Should describe the property (e.g., 'Property at Hovedgaden 123' or 'Orthophoto of property BFE 12345'). Be specific about what property is shown."
+                    },
+                    "property_identifier": {
+                        "type": "string",
+                        "description": "Property identifier (address, BFE number, or BBR number) for reference. Helps track which property the screenshot shows."
+                    }
+                },
+                "required": ["caption"]
+            }
+        }
+    })
+    @xml_schema(
+        tag_name="show-chat-screenshot",
+        mappings=[
+            {"param_name": "caption", "node_type": "attribute", "path": "."},
+            {"param_name": "property_identifier", "node_type": "attribute", "path": ".", "required": False}
+        ],
+        example='''
+        <function_calls>
+        <invoke name="show_chat_screenshot">
+        <parameter name="caption">Property at Hovedgaden 123, Copenhagen</parameter>
+        <parameter name="property_identifier">Hovedgaden 123</parameter>
+        </invoke>
+        </function_calls>
+        
+        <!-- Example with BFE number -->
+        <function_calls>
+        <invoke name="show_chat_screenshot">
+        <parameter name="caption">Orthophoto of property BFE 12345</parameter>
+        <parameter name="property_identifier">BFE 12345</parameter>
+        </invoke>
+        </function_calls>
+        '''
+    )
+    async def show_chat_screenshot(self, caption: str, property_identifier: Optional[str] = None) -> ToolResult:
+        """Display the most recent browser screenshot in the chat.
+        
+        This tool should ONLY be used for property-related images when analyzing real estate.
+        It takes the latest browser screenshot and makes it visible in the conversation.
+        
+        Args:
+            caption: Description of what the screenshot shows (property address/identifier)
+            property_identifier: Optional property identifier for tracking
+            
+        Returns:
+            ToolResult indicating success or failure
+        """
+        try:
+            if not self.thread_id or not self.thread_manager:
+                return self.fail_response("Chat screenshot feature not available - missing thread context")
+            
+            logger.info(f"📸 CHAT SCREENSHOT requested: caption='{caption}', property='{property_identifier}'")
+            
+            # Get the latest browser_state message with screenshot
+            client = await self.thread_manager.db.client
+            latest_browser_state = await client.table('messages').select('*').eq(
+                'thread_id', self.thread_id
+            ).eq('type', 'browser_state').order('created_at', desc=True).limit(1).execute()
+            
+            if not latest_browser_state.data or len(latest_browser_state.data) == 0:
+                return self.fail_response("No browser screenshot available. Please navigate to the property page first.")
+            
+            # Extract screenshot from browser_state
+            browser_content = latest_browser_state.data[0]["content"]
+            if isinstance(browser_content, str):
+                browser_content = json.loads(browser_content)
+            
+            screenshot_base64 = browser_content.get("screenshot_base64")
+            screenshot_url = browser_content.get("image_url")
+            
+            if not screenshot_base64 and not screenshot_url:
+                return self.fail_response("Browser screenshot exists but contains no image data")
+            
+            # Use base64 if available, otherwise extract from URL
+            display_screenshot = screenshot_base64
+            if not display_screenshot and screenshot_url and 'base64,' in screenshot_url:
+                display_screenshot = screenshot_url.split('base64,')[1]
+            
+            if not display_screenshot:
+                return self.fail_response("Could not extract screenshot data")
+            
+            logger.info(f"📸 Creating chat screenshot message with {len(display_screenshot)} chars of base64 data")
+            
+            # Create visible chat screenshot message
+            screenshot_content = {
+                "content": caption,
+                "image": {
+                    "base64": display_screenshot,
+                    "mime_type": "image/jpeg",
+                    "type": "chat_screenshot"
+                }
+            }
+            
+            # Add metadata
+            metadata = {
+                "is_image_message": True,
+                "image_type": "chat_screenshot",
+                "screenshot_source": "property_analysis"
+            }
+            if property_identifier:
+                metadata["property_identifier"] = property_identifier
+            
+            # Add as assistant message so it appears in chat
+            result = await self.thread_manager.add_message(
+                thread_id=self.thread_id,
+                type="assistant",
+                content=screenshot_content,
+                metadata=metadata,
+                is_llm_message=False
+            )
+            
+            if result:
+                logger.info(f"✅ CHAT SCREENSHOT ADDED to conversation: {caption}")
+                return self.success_response(
+                    f"Chat screenshot displayed successfully for property: {property_identifier or caption}"
+                )
+            else:
+                return self.fail_response("Failed to add chat screenshot to conversation")
+                
+        except Exception as e:
+            logger.error(f"❌ Error in show_chat_screenshot: {e}", exc_info=True)
+            return self.fail_response(f"Error displaying chat screenshot: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -107,8 +107,8 @@ async def run_agent(
         thread_manager.add_tool(SandboxDeployTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxExposeTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(ExpandMessageTool, thread_id=thread_id, thread_manager=thread_manager)
-        thread_manager.add_tool(MessageTool)
-        thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_manager=thread_manager)
+        thread_manager.add_tool(MessageTool, thread_id=thread_id, thread_manager=thread_manager)
+        thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         thread_manager.add_tool(LlamaParseDocumentTool, project_id=project_id, thread_manager=thread_manager)
         thread_manager.add_tool(SandboxKnowledgeBaseTool, project_id=project_id, thread_manager=thread_manager)
@@ -131,7 +131,7 @@ async def run_agent(
         if enabled_tools.get('sb_expose_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxExposeTool, project_id=project_id, thread_manager=thread_manager)
         if enabled_tools.get('web_search_tool', {}).get('enabled', False):
-            thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_manager=thread_manager)
+            thread_manager.add_tool(SandboxWebSearchTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         if enabled_tools.get('sb_vision_tool', {}).get('enabled', False):
             thread_manager.add_tool(SandboxVisionTool, project_id=project_id, thread_id=thread_id, thread_manager=thread_manager)
         if config.RAPID_API_KEY and enabled_tools.get('data_providers_tool', {}).get('enabled', False):
@@ -349,6 +349,15 @@ async def run_agent(
             data = json.loads(data)
         trace.update(input=data['content'])
 
+    # Import ImageManager for conversation logic exclusion
+    from agent.image_manager import ImageManager
+    
+    existing_assistant_msgs = await client.table('messages').select('message_id, metadata').eq('thread_id', thread_id).eq('type', 'assistant').execute()
+    
+    # Filter out image messages from the count
+    real_assistant_msgs = [msg for msg in (existing_assistant_msgs.data or []) 
+                          if not ImageManager.should_exclude_from_conversation_logic(msg)]
+
     while continue_execution and iteration_count < max_iterations:
         iteration_count += 1
         logger.info(f"🔄 Running iteration {iteration_count} of {max_iterations}...")
@@ -365,11 +374,13 @@ async def run_agent(
                 "message": error_msg
             }
             break
-        # Check if last message is from assistant using direct Supabase query
+        # Check if last message is from assistant using direct Supabase query (excluding image messages)
         latest_message = await client.table('messages').select('*').eq('thread_id', thread_id).in_('type', ['assistant', 'tool', 'user']).order('created_at', desc=True).limit(1).execute()
         if latest_message.data and len(latest_message.data) > 0:
             message_type = latest_message.data[0].get('type')
-            if message_type == 'assistant':
+            should_exclude = ImageManager.should_exclude_from_conversation_logic(latest_message.data[0])
+            
+            if message_type == 'assistant' and not should_exclude:
                 logger.info(f"Last message was from assistant, stopping execution")
                 trace.event(name="last_message_from_assistant", level="DEFAULT", status_message=(f"Last message was from assistant, stopping execution"))
                 continue_execution = False
