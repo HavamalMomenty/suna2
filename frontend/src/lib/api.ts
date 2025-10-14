@@ -2144,6 +2144,37 @@ export const getAgentBuilderChatHistory = async (agentId: string): Promise<{mess
 };
 
 // Workflow API Functions
+export const reorderWorkflows = async (workflowIds: string[]): Promise<void> => {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new NoAccessTokenAvailableError();
+    }
+
+    const response = await fetch(`${API_URL}/workflows/reorder`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(workflowIds),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No error details available');
+      console.error(`Error reordering workflows: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Error reordering workflows: ${response.statusText} (${response.status})`);
+    }
+  } catch (error) {
+    console.error('Error reordering workflows:', error);
+    throw error;
+  }
+};
+
 export const getWorkflows = async (projectId?: string): Promise<Workflow[]> => {
   try {
     const supabase = createClient();

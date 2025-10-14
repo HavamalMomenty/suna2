@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Trash2, AlertTriangle, Star } from 'lucide-react';
+import { Loader2, Trash2, AlertTriangle, Star, ArrowLeft } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/use-admin';
 import { toggleWorkflowDefaultStatus } from '@/lib/api';
 import { toast } from 'sonner';
@@ -62,6 +62,7 @@ interface WorkflowBuilderModalProps {
   workflowId?: string;
   mode: 'create' | 'edit' | 'view';
   projectId: string; // Can be empty string if no project exists yet
+  preventOutsideClick?: boolean;
 }
 
 export function WorkflowBuilderModal({ 
@@ -70,7 +71,8 @@ export function WorkflowBuilderModal({
   onWorkflowSaved,
   workflowId, 
   mode, 
-  projectId 
+  projectId,
+  preventOutsideClick = false
 }: WorkflowBuilderModalProps) {
   const [activeTab, setActiveTab] = useState('basic');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -274,20 +276,9 @@ export function WorkflowBuilderModal({
   };
 
   const handleRemoveImage = async () => {
-    // If there's an existing image URL, try to delete it from storage
-    if (formData.image_url && formData.image_url.includes('workflow-images/')) {
-      try {
-        const supabase = createClient();
-        const fileName = formData.image_url.split('workflow-images/')[1];
-        await supabase.storage
-          .from('workflow-images')
-          .remove([`workflow-images/${fileName}`]);
-      } catch (error) {
-        console.error('Error deleting image from storage:', error);
-        // Continue anyway - the main goal is to clear the form
-      }
-    }
-    
+    // DON'T delete from storage - just clear from form
+    // This prevents accidental permanent deletion of images
+    // Images will be cleaned up manually when no longer needed
     setFormData(prev => ({ ...prev, image_url: '' }));
     setSelectedFileName('');
   };
@@ -325,7 +316,10 @@ export function WorkflowBuilderModal({
   if (loadingData && (mode === 'edit' || mode === 'view')) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent 
+          className="max-w-4xl"
+          onPointerDownOutside={preventOutsideClick ? (e) => e.preventDefault() : undefined}
+        >
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading workflow data...</span>
@@ -338,7 +332,10 @@ export function WorkflowBuilderModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={preventOutsideClick ? (e) => e.preventDefault() : undefined}
+        >
           <DialogHeader>
             <DialogTitle>
               {mode === 'create' ? 'Create New Workflow' : mode === 'edit' ? 'Edit Workflow' : 'View Workflow'}
@@ -518,7 +515,8 @@ export function WorkflowBuilderModal({
               ) : (
                 <>
                   <Button variant="outline" onClick={onClose} disabled={isLoading}>
-                    Cancel
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
                   </Button>
                   <Button 
                     onClick={handleSave} 

@@ -25,6 +25,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useFeatureFlag } from "@/lib/feature-flags";
 import { WorkflowBuilderModal } from "@/components/workflows/WorkflowBuilderModal";
+import { WorkflowCreationChoiceDialog } from "@/components/workflows/WorkflowCreationChoiceDialog";
+import { TemplateSelectionDialog } from "@/components/workflows/TemplateSelectionDialog";
 import { useIsAdmin } from '@/hooks/use-admin';
 import { createClient } from '@/lib/supabase/client';
 
@@ -87,8 +89,8 @@ export default function WorkflowsPage() {
   }, [flagLoading, workflowsEnabled, router]);
 
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [preBuiltWorkflows, setPreBuiltWorkflows] = useState<Workflow[]>([]);
-  const [customWorkflows, setCustomWorkflows] = useState<Workflow[]>([]);
+  const [templateWorkflows, setTemplateWorkflows] = useState<Workflow[]>([]); // Templates (default_workflow=true), hidden from UI
+  const [userWorkflows, setUserWorkflows] = useState<Workflow[]>([]); // User's workflows
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [executingWorkflows, setExecutingWorkflows] = useState<Set<string>>(new Set());
@@ -104,6 +106,11 @@ export default function WorkflowsPage() {
   const [builderModalOpen, setBuilderModalOpen] = useState(false);
   const [builderWorkflowId, setBuilderWorkflowId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'view'>('create');
+
+  // New Workflow Creation Flow State
+  const [creationChoiceOpen, setCreationChoiceOpen] = useState(false);
+  const [templateSelectionOpen, setTemplateSelectionOpen] = useState(false);
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
 
   const { state, setOpen, setOpenMobile } = useSidebar();
   const updateWorkflowStatusMutation = useUpdateWorkflowStatus();
@@ -135,11 +142,11 @@ export default function WorkflowsPage() {
         const workflowsData = await getWorkflows(firstProject.id);
         setWorkflows(workflowsData);
         
-        // Separate workflows into pre-built (default) and custom
-        const preBuilt = workflowsData.filter(w => w.default_workflow === true);
-        const custom = workflowsData.filter(w => w.default_workflow !== true);
-        setPreBuiltWorkflows(preBuilt);
-        setCustomWorkflows(custom);
+        // Separate workflows into templates (default_workflow=true) and user workflows
+        const templates = workflowsData.filter(w => w.default_workflow === true);
+        const userWf = workflowsData.filter(w => w.default_workflow !== true);
+        setTemplateWorkflows(templates); // Store for template selection dialog
+        setUserWorkflows(userWf); // Display in main UI
       } catch (err) {
         console.error('Error loading workflows:', err);
         setError(err instanceof Error ? err.message : 'Failed to load workflows');
@@ -431,14 +438,11 @@ export default function WorkflowsPage() {
           <div>
             <h2 className="text-lg font-semibold">{sectionTitle}</h2>
             <p className="text-sm text-muted-foreground">
-              {sectionTitle === "Pre-built Workflows" 
-                ? "Ready-to-use workflows created by administrators"
-                : "Your custom workflows and automations"
-              }
+              Your workflows and automations
             </p>
           </div>
           {showAddButton && (
-            <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={loading || creating}>
+            <Button onClick={handleNewWorkflowClick} disabled={loading || creating}>
               {creating ? (
                 <Loader2 className="animate-spin rounded-full h-4 w-4" />
               ) : (
@@ -456,16 +460,13 @@ export default function WorkflowsPage() {
                 <Plus className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">
-                {sectionTitle === "Pre-built Workflows" ? "No pre-built workflows available" : "No workflows yet"}
+                No workflows yet
               </h3>
               <p className="text-muted-foreground mb-4">
-                {sectionTitle === "Pre-built Workflows" 
-                  ? "Pre-built workflows will appear here when administrators create them"
-                  : "Create your first workflow to get started with automation"
-                }
+                Create your first workflow to get started with automation
               </p>
               {showAddButton && (
-                <Button onClick={() => handleOpenBuilderModal(null, 'create')} disabled={creating}>
+                <Button onClick={handleNewWorkflowClick} disabled={creating}>
                   {creating ? (
                     <Loader2 className="animate-spin rounded-full h-4 w-4" />
                   ) : (
@@ -477,14 +478,14 @@ export default function WorkflowsPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {workflows.map((workflow, index) => (
               <div 
                 key={workflow.id}
-                className="bg-neutral-100 dark:bg-sidebar border border-border rounded-lg overflow-hidden hover:bg-muted/50 transition-all duration-200 group h-34 relative cursor-pointer"
+                className="bg-neutral-100 dark:bg-sidebar border border-border rounded-lg overflow-hidden hover:bg-muted/50 transition-all duration-200 group h-20 relative cursor-pointer hover:shadow-md"
                 onClick={() => handleWorkflowClick(workflow)}
               >
-                {/* Background Image or Color */}
+                {/* Background Image, Striped Pattern, or Color */}
                 {workflow.image_url ? (
                   <div className="absolute inset-0">
                     <WorkflowImage 
@@ -497,53 +498,69 @@ export default function WorkflowsPage() {
                   </div>
                 ) : (
                   <div 
-                    className="absolute inset-0 bg-gradient-to-br from-opacity-90 to-opacity-100"
-                    style={{ backgroundColor: getWorkflowColor(workflow.status) }}
+                    className="absolute inset-0"
+                    style={{ 
+                      background: `repeating-linear-gradient(
+                        45deg,
+                        #e5e7eb20,
+                        #e5e7eb20 2px,
+                        #93c5fd40 2px,
+                        #93c5fd40 4px
+                      )`
+                    }}
                   />
                 )}
 
                 {/* Title overlay - positioned in top 1/3 */}
-                <div className="absolute top-0 left-0 right-0 h-11 bg-background/70 backdrop-blur-sm flex items-center justify-center p-2 -mx-0.5">
-                  <h3 className="font-medium text-foreground text-sm leading-tight line-clamp-2 text-center">
+                <div className="absolute top-0 left-0 right-0 h-8 bg-background/80 backdrop-blur-sm flex items-center justify-center p-1.5 -mx-0.5">
+                  <h3 className="font-medium text-foreground text-xs leading-tight line-clamp-2 text-center">
                     {workflow.name}
                   </h3>
                 </div>
 
                 {/* Status and Run button overlays */}
-                <div className="absolute top-3 right-3">
-                  {getStatusIcon(workflow.status)}
+                <div className="absolute top-1 right-1">
+                  <div className="scale-75">
+                    {getStatusIcon(workflow.status)}
+                  </div>
                 </div>
-                <div className="absolute top-3 left-3">
+                <div className="absolute top-1 left-1">
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="h-8 w-8 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6 p-0 hover:bg-white/20 hover:text-white text-white/70 opacity-0 group-hover:opacity-100 transition-opacity"
                     disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
-                    onClick={() => handleRunWorkflow(workflow.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRunWorkflow(workflow.id);
+                    }}
                   >
                     {executingWorkflows.has(workflow.id) ? (
-                      <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                      <Loader2 className="animate-spin rounded-full h-2.5 w-2.5" />
                     ) : (
-                      <Play className="h-3 w-3" />
+                      <Play className="h-2.5 w-2.5" />
                     )}
                   </Button>
                 </div>
                 {/* Action buttons positioned at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-background/90 backdrop-blur-sm">
-                  <div className="flex gap-2">
+                <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-background/85 backdrop-blur-sm">
+                  <div className="flex gap-1">
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleRunWorkflow(workflow.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRunWorkflow(workflow.id);
+                      }}
                       disabled={executingWorkflows.has(workflow.id) || workflow.status !== 'active'}
-                      className="flex-1"
+                      className="flex-1 h-7 text-xs px-2"
                     >
                       {executingWorkflows.has(workflow.id) ? (
-                        <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                        <Loader2 className="animate-spin rounded-full h-2.5 w-2.5" />
                       ) : (
-                        <Play className="h-3 w-3" />
+                        <Play className="h-2.5 w-2.5" />
                       )}
-                      {executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}
+                      <span className="ml-1">{executingWorkflows.has(workflow.id) ? 'Running...' : 'Run'}</span>
                     </Button>
 
                     {/* For default workflows: Different buttons for admins vs non-admins */}
@@ -554,20 +571,24 @@ export default function WorkflowsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
-                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenBuilderModal(workflow.id, 'edit');
+                            }}
+                            className="flex-1 h-7 text-xs px-2"
                           >
-                            <Settings className="h-3 w-3" />
-                            Configure
+                            <Settings className="h-2.5 w-2.5" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCopyWorkflow(workflow)}
-                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyWorkflow(workflow);
+                            }}
+                            className="flex-1 h-7 text-xs px-2"
                           >
-                            <Copy className="h-3 w-3" />
-                            Copy
+                            <Copy className="h-2.5 w-2.5" />
                           </Button>
                         </>
                       ) : (
@@ -576,20 +597,24 @@ export default function WorkflowsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewWorkflow(workflow)}
-                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewWorkflow(workflow);
+                            }}
+                            className="flex-1 h-7 text-xs px-2"
                           >
-                            <Eye className="h-3 w-3" />
-                            View
+                            <Eye className="h-2.5 w-2.5" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCopyWorkflow(workflow)}
-                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyWorkflow(workflow);
+                            }}
+                            className="flex-1 h-7 text-xs px-2"
                           >
-                            <Copy className="h-3 w-3" />
-                            Copy
+                            <Copy className="h-2.5 w-2.5" />
                           </Button>
                         </>
                       )
@@ -599,27 +624,31 @@ export default function WorkflowsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleOpenBuilderModal(workflow.id, 'edit')}
-                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenBuilderModal(workflow.id, 'edit');
+                          }}
+                          className="flex-1 h-7 text-xs px-2"
                         >
-                          <Settings className="h-3 w-3" />
-                          Configure
+                          <Settings className="h-2.5 w-2.5" />
                         </Button>
                         <Button
                           variant={workflow.status === 'active' ? "default" : "outline"}
                           size="sm"
-                          onClick={() => handleToggleWorkflowStatus(workflow.id, workflow.status)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleWorkflowStatus(workflow.id, workflow.status);
+                          }}
                           disabled={togglingWorkflows.has(workflow.id)}
-                          className={workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}
+                          className={`flex-1 h-7 text-xs px-2 ${workflow.status === 'active' ? "bg-green-600 hover:bg-green-700" : ""}`}
                         >
                           {togglingWorkflows.has(workflow.id) ? (
-                            <Loader2 className="animate-spin rounded-full h-3 w-3" />
+                            <Loader2 className="animate-spin rounded-full h-2.5 w-2.5" />
                           ) : workflow.status === 'active' ? (
-                            <PowerOff className="h-3 w-3" />
+                            <PowerOff className="h-2.5 w-2.5" />
                           ) : (
-                            <Power className="h-3 w-3" />
+                            <Power className="h-2.5 w-2.5" />
                           )}
-                          {workflow.status === 'active' ? 'Deactivate' : 'Activate'}
                         </Button>
                       </>
                     )}
@@ -631,13 +660,14 @@ export default function WorkflowsPage() {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                             disabled={deletingWorkflows.has(workflow.id)}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {deletingWorkflows.has(workflow.id) ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
+                              <div className="animate-spin rounded-full h-2.5 w-2.5 border-b border-current" />
                             ) : (
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-2.5 w-2.5" />
                             )}
                           </Button>
                         </AlertDialogTrigger>
@@ -683,6 +713,52 @@ export default function WorkflowsPage() {
     setBuilderMode('create');
   };
 
+  // New Workflow Creation Flow Handlers
+  const handleNewWorkflowClick = () => {
+    setCreationChoiceOpen(true);
+  };
+
+  const handleUseTemplate = () => {
+    setCreationChoiceOpen(false);
+    setTemplateSelectionOpen(true);
+  };
+
+  const handleDesignFromScratch = () => {
+    setCreationChoiceOpen(false);
+    handleOpenBuilderModal(null, 'create');
+  };
+
+  const handleTemplateSelect = async (templateId: string) => {
+    if (!projectId) {
+      toast.error("No project selected");
+      return;
+    }
+    
+    try {
+      setCopyingTemplate(true);
+      const copiedWorkflow = await copyWorkflow(templateId, projectId);
+      toast.success(`Workflow created from template: "${copiedWorkflow.name}"`);
+      setTemplateSelectionOpen(false);
+      
+      // Refresh workflows list
+      await fetchWorkflows();
+      
+      // Optionally open the copied workflow in edit mode
+      // handleOpenBuilderModal(copiedWorkflow.id, 'edit');
+    } catch (error) {
+      console.error('Error copying template:', error);
+      toast.error('Failed to create workflow from template');
+    } finally {
+      setCopyingTemplate(false);
+    }
+  };
+
+  const handleTemplateSelectionClose = () => {
+    setTemplateSelectionOpen(false);
+    // Optionally reopen the choice dialog
+    setCreationChoiceOpen(true);
+  };
+
 
   const fetchWorkflows = async () => {
     try {
@@ -691,11 +767,11 @@ export default function WorkflowsPage() {
       const workflowsData = await getWorkflows(projectId);
       setWorkflows(workflowsData);
       
-      // Separate workflows into pre-built (default) and custom
-      const preBuilt = workflowsData.filter(w => w.default_workflow === true);
-      const custom = workflowsData.filter(w => w.default_workflow !== true);
-      setPreBuiltWorkflows(preBuilt);
-      setCustomWorkflows(custom);
+      // Separate workflows into templates (default_workflow=true) and user workflows
+      const templates = workflowsData.filter(w => w.default_workflow === true);
+      const userWf = workflowsData.filter(w => w.default_workflow !== true);
+      setTemplateWorkflows(templates); // Store for template selection dialog
+      setUserWorkflows(userWf); // Display in main UI
     } catch (err) {
       console.error('Error loading workflows:', err);
       setError(err instanceof Error ? err.message : 'Failed to load workflows');
@@ -808,11 +884,8 @@ export default function WorkflowsPage() {
           </div>
         </div>
 
-          {/* Pre-built Workflows Section */}
-          {renderWorkflowCards(preBuiltWorkflows, "Pre-built Workflows", false)}
-
-          {/* Custom Workflows Section */}
-          {renderWorkflowCards(customWorkflows, "Custom Workflows", true)}
+          {/* Workflows Section - only show user workflows, templates are for selection dialog */}
+          {renderWorkflowCards(userWorkflows, "Workflows", true)}
           
           {/* DEBUG: Test element to verify height growth */}
           <div style={{ height: '500px', backgroundColor: 'red', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
@@ -820,6 +893,24 @@ export default function WorkflowsPage() {
           </div>
       </div>
 
+      {/* Workflow Creation Choice Dialog */}
+      <WorkflowCreationChoiceDialog
+        isOpen={creationChoiceOpen}
+        onClose={() => setCreationChoiceOpen(false)}
+        onUseTemplate={handleUseTemplate}
+        onDesignFromScratch={handleDesignFromScratch}
+      />
+
+      {/* Template Selection Dialog */}
+      <TemplateSelectionDialog
+        isOpen={templateSelectionOpen}
+        onClose={handleTemplateSelectionClose}
+        templates={templateWorkflows}
+        onTemplateSelect={handleTemplateSelect}
+        isLoading={copyingTemplate}
+      />
+
+      {/* Workflow Builder Modal */}
       {projectId && (
         <WorkflowBuilderModal 
           isOpen={builderModalOpen} 

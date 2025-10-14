@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 import json
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from .models import (
     WorkflowDefinition, WorkflowCreateRequest, WorkflowUpdateRequest,
@@ -223,7 +223,7 @@ async def list_workflows(
         client = await db.client
         
         # Get user's own workflows by created_by (user_id) - no longer dependent on project_id
-        query = client.table('workflows').select('*').eq('created_by', user_id)
+        query = client.table('workflows').select('*').eq('created_by', user_id).order('created_at', desc=False)
         
         result = await query.execute()
         
@@ -238,7 +238,7 @@ async def list_workflows(
         
         # Add default workflows (identified by default_workflow = true)
         # but exclude any that are already in the user's workflows
-        default_result = await client.table('workflows').select('*').eq('default_workflow', True).execute()
+        default_result = await client.table('workflows').select('*').eq('default_workflow', True).order('created_at', desc=False).execute()
         
         for data in default_result.data:
             if data['id'] not in workflow_ids:  # Avoid duplicates
@@ -1352,7 +1352,34 @@ async def create_workflow_from_template(
         logger.error(f"Error creating workflow from template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/workflows/scheduler/status")
+@router.post("/reorder")
+async def reorder_workflows(
+    workflow_ids: List[str],
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Reorder workflows by updating their created_at timestamps."""
+    try:
+        client = await db.client
+        
+        # Verify all workflows belong to the user
+        result = await client.table('workflows').select('id').eq('created_by', user_id).in_('id', workflow_ids).execute()
+        if len(result.data) != len(workflow_ids):
+            raise HTTPException(status_code=403, detail="Not all workflows belong to the user")
+        
+        # Update created_at timestamps to reflect new order
+        base_time = datetime.utcnow()
+        for i, workflow_id in enumerate(workflow_ids):
+            new_created_at = base_time + timedelta(seconds=i)
+            await client.table('workflows').update({
+                'created_at': new_created_at.isoformat()
+            }).eq('id', workflow_id).execute()
+        
+        return {"message": "Workflows reordered successfully"}
+    
+    except Exception as e:
+        logger.error(f"Error reordering workflows: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 async def get_scheduler_status(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):

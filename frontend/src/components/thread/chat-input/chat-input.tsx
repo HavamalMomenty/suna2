@@ -20,6 +20,7 @@ import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { TokenManagementModal } from '@/components/TokenManagementModal';
 import KnowledgeBaseModal from '@/components/KnowledgeBaseModal';
+import { isChatScreenshotsDisabled } from '@/lib/config';
 
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
@@ -81,6 +82,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     },
     ref,
   ) => {
+    const uploadsDisabled = isChatScreenshotsDisabled();
     const isControlled =
       controlledValue !== undefined && controlledOnChange !== undefined;
 
@@ -235,9 +237,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       <div className="mx-auto w-full max-w-4xl">
         <Card
           className="shadow-none w-full max-w-4xl mx-auto bg-transparent border-none rounded-xl overflow-hidden"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => {
+          onDragOver={uploadsDisabled ? undefined : handleDragOver}
+          onDragLeave={uploadsDisabled ? undefined : handleDragLeave}
+          onDrop={uploadsDisabled ? undefined : ((e) => {
             e.preventDefault();
             e.stopPropagation();
             setIsDraggingOver(false);
@@ -254,7 +256,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 queryClient,
               );
             }
-          }}
+          })}
         >
           <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
             <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-2xl border`}>
@@ -286,7 +288,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 setPendingFiles={setPendingFiles}
                 setUploadedFiles={setUploadedFiles}
                 setIsUploading={setIsUploading}
-                hideAttachments={hideAttachments}
+                hideAttachments={hideAttachments || uploadsDisabled}
                 messages={messages}
 
                 selectedModel={selectedModel}
