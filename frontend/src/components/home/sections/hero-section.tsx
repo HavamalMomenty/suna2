@@ -257,8 +257,8 @@ export function HeroSection() {
 
         <div className="relative z-10 pt-32 pb-32 max-w-3xl mx-auto h-full w-full flex flex-col gap-10 items-center justify-center">
           <h1 className="text-4xl md:text-7xl font-bold tracking-tighter text-center">
-            <span className="text-secondary">Node</span>
-            <span className="text-primary">, the AI-enabled system for real estate investment Analysis</span>
+            <div className="text-secondary">Momenty</div>
+            <div className="text-primary">Automate Real Estate Workflows</div>
           </h1>
           <p className="text-base md:text-xl text-center text-muted-foreground font-medium text-balance leading-relaxed tracking-tight max-w-2xl">
             {hero.description}
@@ -306,7 +306,7 @@ export function HeroSection() {
               </button> */}
             </div>
             <DialogDescription className="text-muted-foreground">
-              Sign in or create an account to talk with Node
+              Sign in or create an account to use Momenty
             </DialogDescription>
           </DialogHeader>
 

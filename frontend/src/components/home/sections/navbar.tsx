@@ -130,8 +130,8 @@ export function Navbar() {
               <Image
                 src={logoSrc}
                 alt="Momenty Logo"
-                width={100}
-                height={24}
+                width={150}
+                height={36}
                 className="fill-primary"
                 priority
               />
@@ -210,11 +210,11 @@ export function Navbar() {
                     <Image
                       src={logoSrc}
                       alt="Momenty Logo"
-                      width={100}
-                      height={24}
+                      width={150}
+                      height={36}
                     />
                     <span className="font-medium text-primary text-sm">
-                      / Node
+                      / Momenty
                     </span>
                   </Link>
                   <button

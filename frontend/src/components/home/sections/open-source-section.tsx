@@ -15,7 +15,7 @@ export function OpenSourceSection() {
             100% Open Source
           </h2>
           <p className="text-muted-foreground text-center text-balance font-medium">
-            Node is fully open source. Join our community and help shape the
+            Momenty is built for real estate professionals. Join our community and help shape the
             future of AI.
           </p>
         </SectionHeader>
@@ -32,7 +32,7 @@ export function OpenSourceSection() {
                   The Generalist AI Agent
                 </h3>
                 <p className="text-muted-foreground mt-2">
-                  Node is a a real estate agent built from opensource software.
+                  Momenty is a real estate risk management platform built from opensource software.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

@@ -36,7 +36,7 @@ const UseCasesSection: React.FC = () => {
             </h2>
             <div className="w-24 h-1 bg-primary mx-auto mb-6"></div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Discover how our platform transforms workflows across different industries
+              Streamline your real estate investment process with our three specialized workflows
             </p>
           </motion.div>
         </div>
@@ -45,7 +45,7 @@ const UseCasesSection: React.FC = () => {
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid md:grid-cols-2 gap-10"
+          className="grid md:grid-cols-3 gap-8"
         >
           {siteConfig.useCasesSection.cases.map((useCase, idx) => (
             <motion.div key={useCase.id} variants={item}>

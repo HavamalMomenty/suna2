@@ -49,11 +49,11 @@ export interface PricingTier {
 }
 
 export const siteConfig = {
-  name: 'Node',
-  description: 'The workflow specific AI Agent that can act on your behalf.',
+  name: 'Momenty',
+  description: 'The practical tool for managing sustainability risks across real estate portfolios.',
   cta: 'Start Free',
   url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  keywords: ['AI Agent', 'Generalist AI', 'Open Source AI', 'Autonomous Agent'],
+  keywords: ['Real Estate', 'Sustainability Risk', 'Climate Risk', 'Financial Underwriting', 'ESG Analysis', 'Real Estate Investment'],
   links: {
     email: 'support@momenty.dk',
     twitter: '',
@@ -70,48 +70,78 @@ export const siteConfig = {
     ],
   },
   hero: {
-    title: 'Node, the AI Employee.',
+    title: 'Momenty: Automate Real Estate Workflows with AI',
     description:
-      'Transform complex business workflows into automated AI-driven processes',
-
-      //Built on an agentic system core and tailored to your organization, Momenty is context-engineered to handle advanced, industry-specific tasks in Real Estate—saving time, reducing errors, and unlocking new productivity.
-    inputPlaceholder: 'Ask Node to...',
+      'Evaluating real estate assets is very time-consuming. We solve this by leveraging agentic ai built specifically to analyse real estate in Denmark.',
+    inputPlaceholder: 'Enter property address...',
   },
   introSection: {
-    title: 'Momenty helps your organization automate complex real estate analysis tasks',
-    description: 'Node is built on an agentic system core, that has access to all danish real estate related data. Node is engineered to handle advanced, real-estate related tasks such as underwritting real estate investments, doing ESG analysis of a property and producing professional investment overviews',
+    title: 'Three Powerful Workflows for Real Estate Risk Management',
+    description: 'Momenty provides three specialized workflows designed specifically for real estate professionals: Financial Underwriting, Investment Committee Memos, and Climate Risk Screening. All powered by Danish real estate data and AI-driven analysis to transform how you manage risks across your portfolio.',
   },
   useCasesSection: {
-    title: 'Use Cases',
+    title: 'Three Core Workflows',
     cases: [
       {
         id: 1,
-        title: 'Automated Underwriting → IC Paper',
-        subtitle: 'For Real Estate Private Equity',
-        description: 'Upload an Investment Memorandum and let Node:',
+        title: 'Financial Underwriting',
+        subtitle: 'Automated Real Estate Investment Analysis',
+        description: 'Transform property addresses into comprehensive financial models:',
         features: [
-          'Extract key assumptions, figures, and deal structure.',
-          'Fill in your financial underwriting template.',
-          'Produce a polished HTML/PDF Investment Committee memo ready for review.',
+          'Automated cash flow projections and underwriting',
+          'Market analysis and comparable property valuations.',
+          'Risk assessment and sensitivity analysis.',
         ],
         impact: {
           title: 'Impact',
           points: [
-            'Hours of manual work reduced to minutes.',
-            'Consistent, standardized outputs.',
-            'Fewer errors and faster decisions.',
+            'Reduce underwriting time from days to hours.',
+            'Standardized, consistent financial models.',
+            'Enhanced accuracy with Danish real estate data.',
           ],
         },
         partner: '',
       },
       {
         id: 2,
-        title: 'Coming Soon – “PortalPilot” (Codename)',
-        subtitle: 'One secure hub for consumption data from multiple utility portals hidden behind logins.',
-        description: 'PortalPilot logs in on your behalf, retrieves power, heat, and water data, and standardizes it into a single, comparable dataset—no more manual downloading or copy-pasting.',
-        features: [],
-        impact: null,
-        partner: null,
+        title: 'Investment Committee Memos',
+        subtitle: 'Professional IC Documentation',
+        description: 'Generate comprehensive investment committee materials:',
+        features: [
+          'Executive summaries and key investment highlights.',
+          'Financial projections and return analysis.',
+          'Risk factors and mitigation strategies.',
+          'Professional formatting and presentation.',
+        ],
+        impact: {
+          title: 'Impact',
+          points: [
+            'Streamlined decision-making processes.',
+            'Consistent documentation standards.',
+            'Faster approval cycles.',
+          ],
+        },
+        partner: '',
+      },
+      {
+        id: 3,
+        title: 'Climate Risk Screening',
+        subtitle: 'ESG and Sustainability Analysis',
+        description: 'Comprehensive climate risk assessment of real estate:',
+        features: [
+          'Climate risk mapping and vulnerability assessment.',
+          'Eu Taxonomy and DGNB Gold compliance',
+          'Sustainability improvement recommendations.',
+        ],
+        impact: {
+          title: 'Impact',
+          points: [
+            'Proactive risk management.',
+            'ESG compliance automation.',
+            'Future-proofed investment decisions.',
+          ],
+        },
+        partner: '',
       },
     ],
   },
@@ -1108,23 +1138,23 @@ export const siteConfig = {
   },
   ctaSection: {
     id: 'cta',
-    title: 'Start Using Momenty Node Today',
+    title: 'Transform Your Real Estate Risk Management Today',
     backgroundImage: '/holo.png',
     button: {
-      text: 'Get Started for free',
+      text: 'Start Free Trial',
       href: '/auth',
     },
-    subtext: 'The generalist AI Agent that acts on your behalf',
+    subtext: 'The practical tool for managing sustainability risks across real estate portfolios',
   },
   footerLinks: [
     {
-      title: 'Node',
+      title: 'Momenty',
       links: [
-        { id: 1, title: 'About', url: '/about' },
-        { id: 3, title: 'Contact', url: '/contact' },
+        { id: 1, title: 'Contact', url: '/contact' },
       ],
     },
   ],
+  cvr: 'CVR: 45925374',
   useCases: [
     {
       id: 'competitor-analysis',

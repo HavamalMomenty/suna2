@@ -31,17 +31,17 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.name}`,
   },
   description:
-    'Node is a fully open source AI assistant that helps you accomplish real-world tasks with ease. Through natural conversation, Node becomes your digital companion for research, data analysis, and everyday challenges.',
+    'Momenty is the practical tool for managing sustainability risks across real estate portfolios. Transform property addresses into comprehensive financial underwriting, investment committee memos, and climate risk assessments.',
   keywords: [
-    'AI',
-    'artificial intelligence',
-    'browser automation',
-    'web scraping',
-    'file management',
-    'AI assistant',
-    'open source',
-    'research',
-    'data analysis',
+    'Real Estate',
+    'Sustainability Risk',
+    'Climate Risk',
+    'Financial Underwriting',
+    'ESG Analysis',
+    'Real Estate Investment',
+    'Investment Committee',
+    'Portfolio Management',
+    'Danish Real Estate Data',
   ],
   authors: [{ name: 'Momenty Team', url: 'https://momenty.dk' }],
   creator:
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   publisher:
     'Momenty Team',
   category: 'Technology',
-  applicationName: 'Node',
+  applicationName: 'Momenty',
   formatDetection: {
     telephone: false,
     email: false,
@@ -64,17 +64,17 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'Node - Open Source Generalist AI Agent',
+    title: 'Momenty - Real Estate Sustainability Risk Management',
     description:
-      'Node is a fully open source AI assistant that helps you accomplish real-world tasks with ease through natural conversation.',
+      'The practical tool for managing sustainability risks across real estate portfolios. Three powerful workflows: Financial Underwriting, Investment Committee Memos, and Climate Risk Screening.',
     url: siteConfig.url,
-    siteName: 'Node',
+    siteName: 'Momenty',
     images: [
       {
         url: '/banner.png',
         width: 1200,
         height: 630,
-        alt: 'Node - Open Source Generalist AI Agent',
+        alt: 'Momenty - Real Estate Sustainability Risk Management',
         type: 'image/png',
       },
     ],
@@ -83,9 +83,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Node - Open Source Generalist AI Agent',
+    title: 'Momenty - Real Estate Sustainability Risk Management',
     description:
-      'Node is a fully open source AI assistant that helps you accomplish real-world tasks with ease through natural conversation.',
+      'The practical tool for managing sustainability risks across real estate portfolios. Three powerful workflows: Financial Underwriting, Investment Committee Memos, and Climate Risk Screening.',
     creator: '@Momentyai',
     site: '@Momentyai',
     images: [
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
         url: '/banner.png',
         width: 1200,
         height: 630,
-        alt: 'Node - Open Source Generalist AI Agent',
+        alt: 'Momenty - Real Estate Sustainability Risk Management',
       },
     ],
   },
