@@ -6,6 +6,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
+import type { DehydratedState } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { handleApiError } from '@/lib/error-handler';
 
@@ -14,7 +15,7 @@ export function ReactQueryProvider({
   dehydratedState,
 }: {
   children: React.ReactNode;
-  dehydratedState?: unknown;
+  dehydratedState?: DehydratedState;
 }) {
   const [queryClient] = useState(
     () =>
@@ -37,7 +38,7 @@ export function ReactQueryProvider({
               if (error?.status >= 400 && error?.status < 500) return false;
               return failureCount < 1;
             },
-            onError: (error: any, variables: any, context: any) => {
+            onError: (error: any, variables: any, context: any, _mutation: any) => {
               handleApiError(error, {
                 operation: 'perform action',
                 silent: false,
@@ -50,7 +51,7 @@ export function ReactQueryProvider({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HydrationBoundary state={dehydratedState}>
+      <HydrationBoundary state={dehydratedState ?? undefined}>
         {children}
         {/* {process.env.NODE_ENV !== 'production' && (
           <ReactQueryDevtools initialIsOpen={false} />
