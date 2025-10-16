@@ -38,12 +38,12 @@ export const MODELS = {
     lowQuality: false,
     description: 'Claude Sonnet 4.5 - Anthropic\'s latest and most advanced AI assistant'
   },
-  'grok-4-fast': {
+  'node-mini': {
     tier: 'free',
-    priority: 90,
+    priority: 85,
     recommended: false,
     lowQuality: false,
-    description: 'GROK-4 Fast - xAI\'s fast and efficient AI model'
+    description: 'Node Mini - Fast and efficient Claude Haiku model'
   },
 };
 
@@ -156,11 +156,11 @@ export const useModelSelection = () => {
     if (!modelsData?.models || isLoadingModels) {
       models = [
         { 
-          id: 'grok-4-fast', 
-          label: 'GROK-4 Fast', 
+          id: 'node-mini', 
+          label: 'Node Mini', 
           requiresSubscription: false,
-          description: MODELS['grok-4-fast']?.description || MODEL_TIERS.free.baseDescription,
-          priority: MODELS['grok-4-fast']?.priority || 90
+          description: MODELS['node-mini']?.description || MODEL_TIERS.free.baseDescription,
+          priority: MODELS['node-mini']?.priority || 85
         },
         { 
           id: DEFAULT_FREE_MODEL_ID, 
@@ -268,14 +268,15 @@ export const useModelSelection = () => {
           canAccessModel(subscriptionStatus, model.requiresSubscription)
         );
     
-    // For non-admin users, only show recommended models (applies in all environments)
+    // For non-admin users, show recommended models plus Node Mini specifically
     if (!isAdmin) {
       console.log('Filtering models for non-admin user. isAdmin:', isAdmin);
       filteredModels = filteredModels.filter(model => {
         const modelData = MODELS[model.id];
         const isRecommended = modelData?.recommended === true;
-        console.log(`Model ${model.id}: recommended=${isRecommended}`);
-        return isRecommended;
+        const isNodeMini = model.id === 'node-mini'; // Always include Node Mini for non-admin users
+        console.log(`Model ${model.id}: recommended=${isRecommended}, isNodeMini=${isNodeMini}`);
+        return isRecommended || isNodeMini;
       });
     } else {
       console.log('Showing all models for admin user. isAdmin:', isAdmin);

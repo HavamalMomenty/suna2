@@ -493,7 +493,7 @@ async def run_agent(
                 system_prompt=system_message,
                 stream=stream,
                 llm_model=model_name,
-                llm_temperature=0,
+                llm_temperature=0.2,
                 llm_max_tokens=max_tokens,
                 tool_choice="auto",
                 max_xml_tool_calls=1,  #0 means no limit

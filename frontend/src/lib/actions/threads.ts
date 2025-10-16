@@ -36,7 +36,7 @@ export const generateThreadName = async (message: string): Promise<string> => {
           },
         ],
         max_tokens: 20,
-        temperature: 0.7,
+        temperature: 0.2,
       }),
     });
 

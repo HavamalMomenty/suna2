@@ -191,7 +191,7 @@ THE CONVERSATION HISTORY TO SUMMARIZE IS AS FOLLOWS:
             response = await make_llm_api_call(
                 model_name=model,
                 messages=[system_message, {"role": "user", "content": "PLEASE PROVIDE THE SUMMARY NOW."}],
-                temperature=0,
+                temperature=0.2,
                 max_tokens=SUMMARY_TARGET_TOKENS,
                 stream=False
             )

@@ -1,9 +1,9 @@
 MODEL_ACCESS_TIERS = {
     "free": [
         "anthropic/claude-sonnet-4-5-20250929",
+        "anthropic/claude-haiku-4-5-20251001",
         "anthropic/claude-3-7-sonnet-latest",
-        "openai/gpt-4o",
-        "xai/grok-4-fast-non-reasoning"
+        "openai/gpt-4o"
     ],
     "tier_2_20": [
         "openrouter/deepseek/deepseek-chat",
@@ -96,6 +96,7 @@ MODEL_NAME_ALIASES = {
     "sonnet-3.5": "anthropic/claude-3-5-sonnet-latest",
     "haiku-3.5": "anthropic/claude-3-5-haiku-latest",
     "claude-sonnet-4.5": "anthropic/claude-sonnet-4-5-20250929",
+    "node-mini": "anthropic/claude-haiku-4-5-20251001",
     # "gpt-4.1": "openai/gpt-4.1-2025-04-14",  # Commented out in constants.py
     "gpt-4o": "openai/gpt-4o",
     "gpt-4.1": "openai/gpt-4.1",
@@ -104,7 +105,6 @@ MODEL_NAME_ALIASES = {
     # "gpt-4": "openai/gpt-4",  # Commented out in constants.py
     # "gemini-flash-2.5": "openrouter/google/gemini-2.5-flash-preview",  # Commented out in constants.py
     # "grok-3": "xai/grok-3-fast-latest",  # Commented out in constants.py
-    "grok-4-fast": "xai/grok-4-fast-non-reasoning",
     "deepseek": "openrouter/deepseek/deepseek-chat",
     # "deepseek-r1": "openrouter/deepseek/deepseek-r1",
     # "grok-3-mini": "xai/grok-3-mini-fast-beta",  # Commented out in constants.py

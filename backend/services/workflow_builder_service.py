@@ -47,6 +47,10 @@ class WorkflowBuilderService:
             'text/xml',
             'application/xml',
             'application/octet-stream',  # Generic binary/unknown types
+            # Programming Languages
+            'text/x-python',
+            'application/x-python-code',
+            'text/x-script.python',
             # Common mislabels
             'application/vnd.ms-excel',  # some browsers send CSV/XLS as this
             'application/msexcel',       # Alternative Excel MIME
@@ -552,6 +556,7 @@ class WorkflowBuilderService:
                     '.html', '.htm',     # HTML
                     '.css',              # CSS
                     '.xml',              # XML
+                    '.py',               # Python
                     '.pdf',              # PDF
                     '.doc', '.docx',     # Word
                     '.ppt', '.pptx',     # PowerPoint

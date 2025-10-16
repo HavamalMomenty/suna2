@@ -346,7 +346,7 @@ Transform this basic information into a comprehensive, effective system prompt t
             messages=messages,
             model_name="openai/gpt-4o",
             max_tokens=2000,
-            temperature=0.7
+            temperature=0.2
         )
 
         if response and response.get('choices') and response['choices'][0].get('message'):
@@ -936,7 +936,7 @@ async def generate_and_update_project_name(project_id: str, prompt: str):
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
 
         logger.debug(f"Calling LLM ({model_name}) for project {project_id} naming.")
-        response = await make_llm_api_call(messages=messages, model_name=model_name, max_tokens=20, temperature=0.7)
+        response = await make_llm_api_call(messages=messages, model_name=model_name, max_tokens=20, temperature=0.2)
 
         generated_name = None
         if response and response.get('choices') and response['choices'][0].get('message'):

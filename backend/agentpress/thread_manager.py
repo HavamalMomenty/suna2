@@ -457,7 +457,7 @@ class ThreadManager:
         stream: bool = True,
         temporary_message: Optional[Dict[str, Any]] = None,
         llm_model: str = "gpt-4o",
-        llm_temperature: float = 0,
+        llm_temperature: float = 0.2,
         llm_max_tokens: Optional[int] = None,
         processor_config: Optional[ProcessorConfig] = None,
         tool_choice: ToolChoice = "auto",

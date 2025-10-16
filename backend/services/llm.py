@@ -74,7 +74,7 @@ async def handle_error(error: Exception, attempt: int, max_attempts: int) -> Non
 def prepare_params(
     messages: List[Dict[str, Any]],
     model_name: str,
-    temperature: float = 0,
+    temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     response_format: Optional[Any] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
@@ -247,7 +247,7 @@ async def make_llm_api_call(
     messages: List[Dict[str, Any]],
     model_name: str,
     response_format: Optional[Any] = None,
-    temperature: float = 0,
+    temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
     tool_choice: str = "auto",
@@ -354,7 +354,7 @@ async def test_openrouter():
         response = await make_llm_api_call(
             model_name="openrouter/openai/gpt-4o-mini",
             messages=test_messages,
-            temperature=0.7,
+            temperature=0.2,
             max_tokens=100
         )
         print(f"Response: {response.choices[0].message.content}")
@@ -364,7 +364,7 @@ async def test_openrouter():
         response = await make_llm_api_call(
             model_name="openrouter/deepseek/deepseek-r1-distill-llama-70b",
             messages=test_messages,
-            temperature=0.7,
+            temperature=0.2,
             max_tokens=100
         )
         print(f"Response: {response.choices[0].message.content}")
@@ -375,7 +375,7 @@ async def test_openrouter():
         response = await make_llm_api_call(
             model_name="openrouter/mistralai/mixtral-8x7b-instruct",
             messages=test_messages,
-            temperature=0.7,
+            temperature=0.2,
             max_tokens=100
         )
         print(f"Response: {response.choices[0].message.content}")
@@ -397,7 +397,7 @@ async def test_bedrock():
             model_name="bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0",
             model_id="arn:aws:bedrock:us-west-2:935064898258:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             messages=test_messages,
-            temperature=0.7,
+            temperature=0.2,
             # Claude 3.7 has issues with max_tokens, so omit it
             # max_tokens=100
         )

@@ -935,7 +935,7 @@ async def get_available_models(
             all_models.add(full_name)
             
             # Only include short names that don't match their full names for aliases
-            if short_name != full_name and not short_name.startswith("openai/") and not short_name.startswith("anthropic/") and not short_name.startswith("openrouter/") and not short_name.startswith("xai/"):
+            if short_name != full_name and not short_name.startswith("openai/") and not short_name.startswith("openrouter/") and not short_name.startswith("xai/"):
                 if full_name not in model_aliases:
                     model_aliases[full_name] = short_name
         

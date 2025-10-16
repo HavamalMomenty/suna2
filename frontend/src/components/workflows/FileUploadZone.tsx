@@ -49,6 +49,10 @@ const ALLOWED_TYPES = [
   'application/json',
   'text/tab-separated-values',
   'application/octet-stream',
+  // Programming Languages
+  'text/x-python',
+  'application/x-python-code',
+  'text/x-script.python',
   // Office/Documents
   'application/pdf',
   'application/msword',
@@ -73,7 +77,7 @@ const ALLOWED_TYPES = [
 ];
 
 const ALLOWED_EXTENSIONS = [
-  '.md', '.markdown', '.mdx', '.txt', '.csv', '.tsv', '.html', '.htm', '.css', '.xml', '.json',
+  '.md', '.markdown', '.mdx', '.txt', '.csv', '.tsv', '.html', '.htm', '.css', '.xml', '.json', '.py',
   '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.ods', '.odp', '.rtf', '.tex',
   '.jpg', '.jpeg', '.png', '.svg'
 ];
@@ -195,6 +199,9 @@ export function FileUploadZone({
       'text/xml': ['.xml'],
       'application/xml': ['.xml'],
       'application/json': ['.json'],
+      'text/x-python': ['.py'],
+      'application/x-python-code': ['.py'],
+      'text/x-script.python': ['.py'],
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -280,7 +287,7 @@ export function FileUploadZone({
         <Info className="h-4 w-4" />
         <AlertDescription>
           Upload supplementary files to provide additional context for your workflow.
-          Supported: MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, JPG/JPEG, PNG, SVG (max 50MB each).
+          Supported: MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB each).
         </AlertDescription>
       </Alert>
 
@@ -310,7 +317,7 @@ export function FileUploadZone({
                     Drag & drop files here, or click to select
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, JPG/JPEG, PNG, SVG (max 50MB)
+                    MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB)
                   </p>
                 </div>
               )}
