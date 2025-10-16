@@ -189,7 +189,7 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[700px]"
+        className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -230,14 +230,14 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
             ) : (
               <div className="divide-y rounded-md border border-subtle dark:border-white/10">
                 {entries.map((entry) => (
-                  <div key={entry.entry_id} className="flex items-center justify-between p-3">
-                    <div className="min-w-0">
+                  <div key={entry.entry_id} className="flex items-center justify-between p-3 gap-3">
+                    <div className="min-w-0 flex-1 pr-2 max-w-[400px]">
                       <div className="font-medium truncate">{entry.name}</div>
                       {entry.description && (
-                        <div className="text-xs text-muted-foreground truncate">{entry.description}</div>
+                        <div className="text-xs text-muted-foreground line-clamp-2 break-words">{entry.description}</div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => beginEdit(entry.entry_id)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                       </Button>
@@ -270,7 +270,7 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
               </div>
               <div className="space-y-2">
                 <Label htmlFor="kb-content">Content (up to 10,000 chars)</Label>
-                <Textarea id="kb-content" value={content} onChange={(e) => setContent(e.target.value)} rows={10} maxLength={10000} placeholder="Main content" />
+                <Textarea id="kb-content" value={content} onChange={(e) => setContent(e.target.value)} rows={10} maxLength={10000} placeholder="Main content" className="h-64 resize-none overflow-y-auto scrollbar-hide" />
               </div>
             </div>
 
