@@ -71,11 +71,11 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
     }
   }, []);
 
-  const loadEntries = useCallback(async (tid: string) => {
+  const loadEntries = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res: KnowledgeBaseListResponse = await listKbEntries(tid, false);
+      const res: KnowledgeBaseListResponse = await listKbEntries(false);
       setEntries(res.entries || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load knowledge base');
@@ -121,10 +121,7 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
   };
 
   const saveEntry = async () => {
-    if (!effectiveThreadId) {
-      setError('No thread available to save knowledge base entries.');
-      return;
-    }
+    // No longer require threadId - knowledge base entries are user-scoped
     if (!name.trim() || !content.trim()) {
       setError('Title and content are required.');
       return;
@@ -148,14 +145,14 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
           content,
         });
       } else {
-        await createKbEntry(effectiveThreadId, {
+        await createKbEntry({
           name,
           description,
           content,
           usage_context: 'always',
         });
       }
-      await loadEntries(effectiveThreadId);
+      await loadEntries();
       resetForm();
       setMode('list');
     } catch (e) {
@@ -172,7 +169,8 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
       const tid = threadId || (await loadDefaultThread());
       if (!mounted) return;
       setEffectiveThreadId(tid);
-      if (tid) await loadEntries(tid);
+      // Always load entries, regardless of threadId
+      await loadEntries();
     })();
     return () => {
       mounted = false;
@@ -214,9 +212,9 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                {effectiveThreadId ? 'Your records' : 'No thread available. Create a conversation to store knowledge.'}
+                Your knowledge base entries
               </div>
-              <Button onClick={beginCreate} disabled={!effectiveThreadId}>
+              <Button onClick={beginCreate}>
                 <Plus className="h-4 w-4 mr-2" /> Add record
               </Button>
             </div>
@@ -278,7 +276,7 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
               <Button variant="outline" onClick={cancelEdit} disabled={saving}>
                 Discard changes
               </Button>
-              <Button onClick={saveEntry} disabled={saving || !effectiveThreadId}>
+              <Button onClick={saveEntry} disabled={saving}>
                 {saving ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving...</>) : 'Save record and continue'}
               </Button>
             </div>
@@ -304,7 +302,7 @@ export default function KnowledgeBaseModal({ open, onOpenChange, threadId }: Pro
                 try {
                   setSaving(true);
                   await deleteKbEntry(confirmDeleteId);
-                  if (effectiveThreadId) await loadEntries(effectiveThreadId);
+                  await loadEntries();
                 } catch (e) {
                   setError(e instanceof Error ? e.message : 'Failed to delete entry');
                 } finally {

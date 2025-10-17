@@ -99,7 +99,7 @@ class WorkflowBuilderService:
     async def create_workflow_from_builder(
         self, 
         workflow_data: WorkflowBuilderData, 
-        project_id: str, 
+        project_id: Optional[str], 
         user_id: str
     ) -> WorkflowDefinition:
         """

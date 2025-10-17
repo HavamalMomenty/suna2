@@ -151,10 +151,10 @@ export const isLocalMode = (): boolean => {
 export type SubscriptionTier = keyof typeof PROD_TIERS;
 
 // Feature flags
-// Disable chat screenshots/file uploads by default unless explicitly enabled via env
+// Enable chat screenshots/file uploads by default unless explicitly disabled via env
 export const isChatScreenshotsDisabled = (): boolean => {
   const raw = process.env.NEXT_PUBLIC_DISABLE_CHAT_SCREENSHOTS;
-  if (raw === undefined) return true; // default: disabled
+  if (raw === undefined) return false; // default: enabled
   const normalized = String(raw).toLowerCase().trim();
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 };

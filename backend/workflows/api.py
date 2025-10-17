@@ -36,10 +36,15 @@ router = APIRouter()
 
 db = DBConnection()
 
-async def _find_unique_workflow_name(client, base_name: str, project_id: str) -> str:
+async def _find_unique_workflow_name(client, base_name: str, project_id: Optional[str]) -> str:
     """Find a unique workflow name by appending numbers if needed."""
     # First try the base name
-    result = await client.table('workflows').select('name').eq('name', base_name).eq('project_id', project_id).execute()
+    query = client.table('workflows').select('name').eq('name', base_name)
+    if project_id:
+        query = query.eq('project_id', project_id)
+    else:
+        query = query.is_('project_id', 'null')
+    result = await query.execute()
     
     if not result.data:
         return base_name
@@ -48,7 +53,12 @@ async def _find_unique_workflow_name(client, base_name: str, project_id: str) ->
     counter = 1
     while True:
         candidate_name = f"{base_name}_{counter}"
-        result = await client.table('workflows').select('name').eq('name', candidate_name).eq('project_id', project_id).execute()
+        query = client.table('workflows').select('name').eq('name', candidate_name)
+        if project_id:
+            query = query.eq('project_id', project_id)
+        else:
+            query = query.is_('project_id', 'null')
+        result = await query.execute()
         
         if not result.data:
             return candidate_name
@@ -301,8 +311,7 @@ async def copy_workflow(
     try:
         client = await db.client
         
-        if not x_project_id:
-            raise HTTPException(status_code=400, detail="Project ID is required")
+        # Workflows are user-specific only, project_id is optional
         
         # Get the source workflow
         result = await client.table('workflows').select('*').eq('id', workflow_id).execute()
@@ -330,13 +339,13 @@ async def copy_workflow(
         original_name = source_workflow['name']
         base_name = f"{original_name} (Custom)"
         
-        # Find a unique name by trying different numbers
+        # Find a unique name by trying different numbers (use the same project_id as the copy)
         copied_name = await _find_unique_workflow_name(client, base_name, x_project_id)
         
         copied_workflow_data = {
             "name": copied_name,
             "description": source_workflow.get('description', ''),
-            "project_id": x_project_id,
+            "project_id": x_project_id,  # Optional, can be None
             "account_id": account_id,
             "created_by": user_id,
             "master_prompt": source_workflow.get('master_prompt'),
@@ -451,15 +460,22 @@ async def create_workflow(
         workflow_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         
-        # Use provided project_id if available, otherwise generate a unique one for each workflow
-        project_id = request.project_id if request.project_id else str(uuid.uuid4())
+        # Get user's account ID
+        account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+        if not account_result.data:
+            raise HTTPException(status_code=404, detail="User account not found")
+        
+        account_id = account_result.data[0]['account_id']
+        
+        # Workflows are user-specific only, no project_id required
+        project_id = request.project_id  # Optional, can be None
         
         workflow_data = {
             'id': workflow_id,
             'name': request.name,
             'description': request.description,
             'project_id': project_id,
-            'account_id': user_id,  # Use user_id as account_id for simplicity
+            'account_id': account_id,
             'created_by': user_id,
             'status': 'draft',
             'version': 1,
@@ -1098,15 +1114,13 @@ async def convert_flow_to_workflow(
 ):
     """Convert a visual flow to a workflow definition without saving."""
     try:
-        if not x_project_id:
-            raise HTTPException(status_code=400, detail="Project ID is required")
-
+        # Workflows are user-specific only, project_id is optional
         workflow_def = workflow_converter.convert_flow_to_workflow(
             nodes=[node.model_dump() if hasattr(node, 'model_dump') else node.dict() for node in request.nodes],
             edges=[edge.model_dump() if hasattr(edge, 'model_dump') else edge.dict() for edge in request.edges],
             metadata={
                 **request.metadata,
-                'project_id': x_project_id
+                'project_id': x_project_id  # Optional, can be None
             }
         )
         
@@ -1304,8 +1318,7 @@ async def create_workflow_from_template(
 ):
     """Create a new workflow from a template."""
     try:
-        if not x_project_id:
-            raise HTTPException(status_code=400, detail="Project ID is required")
+        # Workflows are user-specific only, project_id is optional
         
         client = await db.client
         template_result = await client.table('workflows').select('*').eq('id', template_id).eq('is_template', True).execute()
@@ -1323,7 +1336,7 @@ async def create_workflow_from_template(
             'id': workflow_id,
             'name': f"{template_data['name']} (Copy)",
             'description': template_data.get('description'),
-            'project_id': x_project_id,
+            'project_id': x_project_id,  # Optional, can be None
             'account_id': user_id,  # Use user_id as account_id for simplicity
             'created_by': user_id,
             'status': 'draft',
@@ -1859,7 +1872,7 @@ async def download_workflow_file(
 @router.post("/workflows/builder/with-files", response_model=WorkflowDefinition)
 async def create_workflow_from_builder_with_files(
     workflow_data: str = Form(...),  # JSON string of WorkflowBuilderData
-    project_id: str = Form(...),
+    project_id: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[]),
     user_id: str = Depends(get_current_user_id_from_jwt),
     service: WorkflowBuilderService = Depends(get_workflow_builder_service)

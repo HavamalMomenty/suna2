@@ -1,5 +1,6 @@
 export const knowledgeBaseKeys = {
     all: ['knowledge-base'] as const,
+    user: () => [...knowledgeBaseKeys.all, 'user'] as const,
     threads: () => [...knowledgeBaseKeys.all, 'threads'] as const,
     thread: (threadId: string) => [...knowledgeBaseKeys.threads(), threadId] as const,
     entry: (entryId: string) => [...knowledgeBaseKeys.all, 'entry', entryId] as const,

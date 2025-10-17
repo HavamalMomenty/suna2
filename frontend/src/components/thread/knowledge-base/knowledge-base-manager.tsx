@@ -55,7 +55,7 @@ import { cn } from '@/lib/utils';
 import { CreateKnowledgeBaseEntryRequest, KnowledgeBaseEntry, UpdateKnowledgeBaseEntryRequest } from '@/hooks/react-query/knowledge-base/types';
 
 interface KnowledgeBaseManagerProps {
-  threadId: string;
+  // No props needed - knowledge base is user-specific only
 }
 
 interface EditDialogData {
@@ -126,7 +126,7 @@ const KnowledgeBaseSkeleton = () => (
     </div>
   );
 
-export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) => {
+export const KnowledgeBaseManager = ({}: KnowledgeBaseManagerProps) => {
   const [editDialog, setEditDialog] = useState<EditDialogData>({ isOpen: false });
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,7 +137,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
     usage_context: 'always',
   });
 
-  const { data: knowledgeBase, isLoading, error } = useKnowledgeBaseEntries(threadId);
+  const { data: knowledgeBase, isLoading, error } = useKnowledgeBaseEntries();
   const createMutation = useCreateKnowledgeBaseEntry();
   const updateMutation = useUpdateKnowledgeBaseEntry();
   const deleteMutation = useDeleteKnowledgeBaseEntry();
@@ -192,7 +192,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           await updateMutation.mutateAsync({ entryId: editDialog.entry.entry_id, data: updateData });
         }
       } else {
-        await createMutation.mutateAsync({ threadId, data: formData });
+        await createMutation.mutateAsync(formData);
       }
       
       handleCloseDialog();

@@ -339,6 +339,7 @@ export function DashboardContent() {
               value={inputValue}
               onChange={setInputValue}
               hideAttachments={false}
+              hideUpgradeMessage={true}
             />
           </div>
 

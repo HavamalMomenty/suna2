@@ -48,29 +48,33 @@ class UpdateKnowledgeBaseEntryRequest(BaseModel):
 
 db = DBConnection()
 
-@router.get("/threads/{thread_id}", response_model=KnowledgeBaseListResponse)
-async def get_thread_knowledge_base(
-    thread_id: str,
+@router.get("/", response_model=KnowledgeBaseListResponse)
+async def get_user_knowledge_base(
     include_inactive: bool = False,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    """Get all knowledge base entries for a thread"""
+    """Get all knowledge base entries for the current user (account-scoped)"""
     try:
         client = await db.client
 
-        thread_result = await client.table('threads').select('*').eq('thread_id', thread_id).execute()
-        if not thread_result.data:
-            raise HTTPException(status_code=404, detail="Thread not found")
+        # Get user's account ID (fallback to user_id for personal accounts)
+        try:
+            account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+            account_id = account_result.data[0]['account_id'] if account_result.data else user_id
+        except Exception as e:
+            logger.warning(f"Could not get account_id for user {user_id}: {e}")
+            account_id = user_id
 
-        result = await client.rpc('get_thread_knowledge_base', {
-            'p_thread_id': thread_id,
-            'p_include_inactive': include_inactive
-        }).execute()
+        # Get all account-scoped knowledge base entries (thread_id IS NULL AND project_id IS NULL)
+        result = await client.table('knowledge_base_entries').select('*').eq('account_id', account_id).is_('thread_id', 'null').is_('project_id', 'null').execute()
         
         entries = []
         total_tokens = 0
         
         for entry_data in result.data or []:
+            if not include_inactive and not entry_data.get('is_active', True):
+                continue
+                
             entry = KnowledgeBaseEntryResponse(
                 entry_id=entry_data['entry_id'],
                 name=entry_data['name'],
@@ -94,23 +98,27 @@ async def get_thread_knowledge_base(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting knowledge base for thread {thread_id}: {str(e)}")
+        logger.error(f"Error getting knowledge base for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base")
 
-@router.post("/threads/{thread_id}", response_model=KnowledgeBaseEntryResponse)
+
+
+@router.post("/", response_model=KnowledgeBaseEntryResponse)
 async def create_knowledge_base_entry(
-    thread_id: str,
     entry_data: CreateKnowledgeBaseEntryRequest,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    """Create a new knowledge base entry for a thread"""
+    """Create a new knowledge base entry for the current user (user-specific only)"""
     try:
         client = await db.client
-        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).execute()
-        if not thread_result.data:
-            raise HTTPException(status_code=404, detail="Thread not found")
         
-        account_id = thread_result.data[0]['account_id']
+        # Get user's account ID (fallback to user_id for personal accounts)
+        try:
+            account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+            account_id = account_result.data[0]['account_id'] if account_result.data else user_id
+        except Exception as e:
+            logger.warning(f"Could not get account_id for user {user_id}: {e}")
+            account_id = user_id
         
         # Persist entries to the user's account scope so they are available across all threads/projects
         insert_data = {
@@ -256,34 +264,50 @@ async def get_knowledge_base_entry(
         logger.error(f"Error getting knowledge base entry {entry_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base entry")
 
-@router.get("/threads/{thread_id}/context")
+@router.get("/context")
 async def get_knowledge_base_context(
-    thread_id: str,
     max_tokens: int = 4000,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    """Get knowledge base context for agent prompts"""
+    """Get knowledge base context for agent prompts (user-specific)"""
     try:
         client = await db.client
-        thread_result = await client.table('threads').select('thread_id').eq('thread_id', thread_id).execute()
-        if not thread_result.data:
-            raise HTTPException(status_code=404, detail="Thread not found")
         
-        result = await client.rpc('get_knowledge_base_context', {
-            'p_thread_id': thread_id,
-            'p_max_tokens': max_tokens
-        }).execute()
+        # Get user's account ID (fallback to user_id for personal accounts)
+        try:
+            account_result = await client.table('basejump.account_user').select('account_id').eq('user_id', user_id).execute()
+            account_id = account_result.data[0]['account_id'] if account_result.data else user_id
+        except Exception as e:
+            logger.warning(f"Could not get account_id for user {user_id}: {e}")
+            account_id = user_id
         
-        context = result.data if result.data else None
+        # Get all user's knowledge base entries that should be included in context
+        result = await client.table('knowledge_base_entries').select('content, usage_context').eq('account_id', account_id).is_('thread_id', 'null').is_('project_id', 'null').eq('is_active', True).execute()
+        
+        context_parts = []
+        current_tokens = 0
+        
+        for entry in result.data or []:
+            if entry['usage_context'] in ['always', 'contextual']:
+                content = entry['content']
+                # Simple token estimation (rough approximation)
+                estimated_tokens = len(content.split()) * 1.3
+                
+                if current_tokens + estimated_tokens <= max_tokens:
+                    context_parts.append(content)
+                    current_tokens += estimated_tokens
+                else:
+                    break
+        
+        context = '\n\n'.join(context_parts) if context_parts else None
         
         return {
             "context": context,
-            "max_tokens": max_tokens,
-            "thread_id": thread_id
+            "max_tokens": max_tokens
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting knowledge base context for thread {thread_id}: {str(e)}")
+        logger.error(f"Error getting knowledge base context for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base context") 

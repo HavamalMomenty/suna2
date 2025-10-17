@@ -49,6 +49,7 @@ export interface ChatInputProps {
   agentName?: string;
   messages?: any[];
   bgColor?: string;
+  hideUpgradeMessage?: boolean;
 }
 
 export interface UploadedFile {
@@ -79,6 +80,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       agentName,
       messages = [],
       bgColor = 'bg-sidebar',
+      hideUpgradeMessage = false,
     },
     ref,
   ) => {
@@ -290,6 +292,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 setIsUploading={setIsUploading}
                 hideAttachments={hideAttachments || uploadsDisabled}
                 messages={messages}
+                hideUpgradeMessage={hideUpgradeMessage}
 
                 selectedModel={selectedModel}
                 onModelChange={handleModelChange}

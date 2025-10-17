@@ -184,7 +184,7 @@ export function WorkflowBuilderModal({
       if (mode === 'create') {
         await createWorkflow.mutateAsync({
           workflow_data: formData,
-          project_id: currentProjectId,
+          project_id: currentProjectId, // Optional, can be undefined
           files: pendingFiles
         });
       } else if (workflowId) {
@@ -320,6 +320,9 @@ export function WorkflowBuilderModal({
           className="max-w-4xl"
           onPointerDownOutside={preventOutsideClick ? (e) => e.preventDefault() : undefined}
         >
+          <DialogHeader>
+            <DialogTitle>Loading Workflow</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading workflow data...</span>
@@ -541,11 +544,11 @@ export function WorkflowBuilderModal({
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="space-y-4">
-              <div>
+            <div className="space-y-4">
+              <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the workflow 
                 <strong> "{formData.title}"</strong> and all associated files.
-              </div>
+              </AlertDialogDescription>
               <div className="space-y-2">
                 <Label htmlFor="delete-confirmation" className="text-sm font-medium">
                   Please type <strong>"{formData.title}"</strong> to confirm.
@@ -563,7 +566,7 @@ export function WorkflowBuilderModal({
                   </div>
                 )}
               </div>
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel 

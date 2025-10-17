@@ -140,7 +140,7 @@ function LoginContent() {
     }
 
     // Add origin for email redirects
-    formData.append('origin', window.location.origin);
+    formData.append('origin', process.env.NEXT_PUBLIC_URL);
 
     const result = await signUp(prevState, formData);
 

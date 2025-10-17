@@ -44,12 +44,12 @@ export interface WorkflowBuilderData {
 
 export interface WorkflowBuilderRequest {
   workflow_data: WorkflowBuilderData;
-  project_id: string;
+  project_id?: string;
 }
 
 export interface WorkflowBuilderRequestWithFiles {
   workflow_data: WorkflowBuilderData;
-  project_id: string;
+  project_id?: string;
   files?: File[];
 }
 
@@ -82,7 +82,9 @@ async function createWorkflowFromBuilder(request: WorkflowBuilderRequestWithFile
   if (request.files && request.files.length > 0) {
     const formData = new FormData();
     formData.append('workflow_data', JSON.stringify(request.workflow_data));
-    formData.append('project_id', request.project_id);
+    if (request.project_id) {
+      formData.append('project_id', request.project_id);
+    }
     
     // Add files to form data
     request.files.forEach((file) => {
@@ -119,7 +121,7 @@ async function createWorkflowFromBuilder(request: WorkflowBuilderRequestWithFile
       },
       body: JSON.stringify({
         workflow_data: request.workflow_data,
-        project_id: request.project_id
+        project_id: request.project_id // Optional, can be undefined
       }),
     });
 

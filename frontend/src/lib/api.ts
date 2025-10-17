@@ -188,14 +188,14 @@ export type KnowledgeBaseListResponse = {
 };
 
 // Knowledge Base API helpers
-export const listKbEntries = async (threadId: string, includeInactive = false): Promise<KnowledgeBaseListResponse> => {
+export const listKbEntries = async (includeInactive = false): Promise<KnowledgeBaseListResponse> => {
   const supabase = createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) throw new NoAccessTokenAvailableError();
 
-  const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}`);
+  const url = new URL(`${API_URL}/knowledge-base/`);
   if (includeInactive) url.searchParams.set('include_inactive', 'true');
 
   const res = await fetch(url.toString(), {
@@ -210,7 +210,6 @@ export const listKbEntries = async (threadId: string, includeInactive = false): 
 };
 
 export const createKbEntry = async (
-  threadId: string,
   payload: { name: string; description?: string; content: string; usage_context?: 'always' | 'on_request' | 'contextual' }
 ): Promise<KnowledgeBaseEntry> => {
   const supabase = createClient();
@@ -219,7 +218,7 @@ export const createKbEntry = async (
   } = await supabase.auth.getSession();
   if (!session?.access_token) throw new NoAccessTokenAvailableError();
 
-  const res = await fetch(`${API_URL}/knowledge-base/threads/${threadId}`, {
+  const res = await fetch(`${API_URL}/knowledge-base/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify(payload),
@@ -289,16 +288,15 @@ export const getKbEntry = async (entryId: string): Promise<KnowledgeBaseEntry> =
 };
 
 export const getKbContext = async (
-  threadId: string,
   maxTokens = 4000
-): Promise<{ context: string | null; max_tokens: number; thread_id: string }> => {
+): Promise<{ context: string | null; max_tokens: number }> => {
   const supabase = createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.access_token) throw new NoAccessTokenAvailableError();
 
-  const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}/context`);
+  const url = new URL(`${API_URL}/knowledge-base/context`);
   url.searchParams.set('max_tokens', String(maxTokens));
 
   const res = await fetch(url.toString(), {
@@ -2442,7 +2440,7 @@ export const getWorkflow = async (workflowId: string): Promise<Workflow> => {
 export const createWorkflow = async (workflowData: {
   name: string;
   description: string;
-  project_id: string;
+  project_id?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   variables?: Record<string, any>;
@@ -2461,7 +2459,7 @@ export const createWorkflow = async (workflowData: {
     const basicWorkflowData = {
       name: workflowData.name,
       description: workflowData.description,
-      project_id: workflowData.project_id,
+      project_id: workflowData.project_id, // Optional, can be undefined
     };
 
     const createResponse = await fetch(`${API_URL}/workflows`, {

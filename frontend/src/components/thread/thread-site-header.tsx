@@ -274,7 +274,7 @@ export function SiteHeader({
               </DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-6">
-              <KnowledgeBaseManager threadId={threadId} />
+              <KnowledgeBaseManager />
             </div>
           </div>
         </DialogContent>

@@ -120,7 +120,7 @@ class WorkflowFlow(BaseModel):
 class WorkflowCreateRequest(BaseModel):
     name: str
     description: Optional[str] = None
-    project_id: str
+    project_id: Optional[str] = None
     agent_id: Optional[str] = None
     is_template: bool = False
     max_execution_time: int = 3600
@@ -177,7 +177,7 @@ class WorkflowBuilderData(BaseModel):
 class WorkflowBuilderRequest(BaseModel):
     """Request model for creating a workflow from builder."""
     workflow_data: WorkflowBuilderData
-    project_id: str
+    project_id: Optional[str] = None
 
 class WorkflowBuilderUpdateRequest(BaseModel):
     """Request model for updating a workflow from builder."""

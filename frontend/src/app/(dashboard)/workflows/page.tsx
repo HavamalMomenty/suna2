@@ -267,7 +267,7 @@ export default function WorkflowsPage() {
       const newWorkflow = await createWorkflow({
         name: workflowName,
         description: "A new workflow",
-        project_id: projectId,
+        project_id: projectId, // Optional, can be undefined
         nodes: [],
         edges: [],
         variables: {}

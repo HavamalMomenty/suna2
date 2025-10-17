@@ -24,14 +24,14 @@ const useAuthHeaders = () => {
   return { getHeaders };
 };
 
-export function useKnowledgeBaseEntries(threadId: string, includeInactive = false) {
+export function useUserKnowledgeBaseEntries(includeInactive = false) {
   const { getHeaders } = useAuthHeaders();
   
   return useQuery({
-    queryKey: knowledgeBaseKeys.thread(threadId),
+    queryKey: knowledgeBaseKeys.user(),
     queryFn: async (): Promise<KnowledgeBaseListResponse> => {
       const headers = await getHeaders();
-      const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}`);
+      const url = new URL(`${API_URL}/knowledge-base/`);
       url.searchParams.set('include_inactive', includeInactive.toString());
       
       const response = await fetch(url.toString(), { headers });
@@ -43,7 +43,28 @@ export function useKnowledgeBaseEntries(threadId: string, includeInactive = fals
       
       return await response.json();
     },
-    enabled: !!threadId,
+  });
+}
+
+export function useKnowledgeBaseEntries(includeInactive = false) {
+  const { getHeaders } = useAuthHeaders();
+  
+  return useQuery({
+    queryKey: knowledgeBaseKeys.user(),
+    queryFn: async (): Promise<KnowledgeBaseListResponse> => {
+      const headers = await getHeaders();
+      const url = new URL(`${API_URL}/knowledge-base/`);
+      url.searchParams.set('include_inactive', includeInactive.toString());
+      
+      const response = await fetch(url.toString(), { headers });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to fetch knowledge base entries');
+      }
+      
+      return await response.json();
+    },
   });
 }
 
@@ -67,14 +88,14 @@ export function useKnowledgeBaseEntry(entryId: string) {
   });
 }
 
-export function useKnowledgeBaseContext(threadId: string, maxTokens = 4000) {
+export function useKnowledgeBaseContext(maxTokens = 4000) {
   const { getHeaders } = useAuthHeaders();
   
   return useQuery({
-    queryKey: knowledgeBaseKeys.context(threadId),
+    queryKey: knowledgeBaseKeys.user(),
     queryFn: async () => {
       const headers = await getHeaders();
-      const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}/context`);
+      const url = new URL(`${API_URL}/knowledge-base/context`);
       url.searchParams.set('max_tokens', maxTokens.toString());
       
       const response = await fetch(url.toString(), { headers });
@@ -86,18 +107,17 @@ export function useKnowledgeBaseContext(threadId: string, maxTokens = 4000) {
       
       return await response.json();
     },
-    enabled: !!threadId,
   });
 }
 
-export function useCreateKnowledgeBaseEntry() {
+export function useCreateUserKnowledgeBaseEntry() {
   const queryClient = useQueryClient();
   const { getHeaders } = useAuthHeaders();
   
   return useMutation({
-    mutationFn: async ({ threadId, data }: { threadId: string; data: CreateKnowledgeBaseEntryRequest }): Promise<KnowledgeBaseEntry> => {
+    mutationFn: async (data: CreateKnowledgeBaseEntryRequest): Promise<KnowledgeBaseEntry> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}`, {
+      const response = await fetch(`${API_URL}/knowledge-base/`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data),
@@ -110,9 +130,41 @@ export function useCreateKnowledgeBaseEntry() {
       
       return await response.json();
     },
-    onSuccess: (_, { threadId }) => {
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.thread(threadId) });
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.context(threadId) });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.user() });
+      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.all });
+      toast.success('Knowledge base entry created successfully');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to create knowledge base entry: ${message}`);
+    },
+  });
+}
+
+export function useCreateKnowledgeBaseEntry() {
+  const queryClient = useQueryClient();
+  const { getHeaders } = useAuthHeaders();
+  
+  return useMutation({
+    mutationFn: async (data: CreateKnowledgeBaseEntryRequest): Promise<KnowledgeBaseEntry> => {
+      const headers = await getHeaders();
+      const response = await fetch(`${API_URL}/knowledge-base/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to create knowledge base entry');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.user() });
+      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.all });
       toast.success('Knowledge base entry created successfully');
     },
     onError: (error) => {
