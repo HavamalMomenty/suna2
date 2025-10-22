@@ -156,23 +156,37 @@ class SandboxWebSearchTool(SandboxToolsBase):
     
     async def _maybe_add_first_search_image(self, query: str, images: list):
         """
-        Add a user feedback screenshot for the first web search.
+        Add a user feedback screenshot for specific types of web searches that benefit from visual results.
+        Only captures images for queries related to aerial imagery, ortofoto, real estate, or visual content.
         
         Args:
             query: The search query
             images: List of image URLs from Tavily results
         """
         try:
-            # Only capture the first search
+            # Only capture images for specific types of queries that benefit from visual results
+            query_lower = query.lower()
+            visual_query_keywords = [
+                'ortofoto', 'aerial', 'satellite', 'drone', 'overhead',
+            ]
+            
+            # Check if this query is related to visual content
+            is_visual_query = any(keyword in query_lower for keyword in visual_query_keywords)
+            
+            if not is_visual_query:
+                logging.info(f"⏭️  Query '{query}' is not visual-related, skipping image capture")
+                return
+            
+            # Only capture the first visual search
             if self._first_search_image_captured:
-                logging.info(f"⏭️  First search image already captured, skipping for query: {query}")
+                logging.info(f"⏭️  First visual search image already captured, skipping for query: {query}")
                 return
             
             if not images or len(images) == 0:
-                logging.warning(f"No images in search results for query: {query}")
+                logging.warning(f"No images in search results for visual query: {query}")
                 return
             
-            logging.info(f"📸 Capturing FIRST search result image for query: '{query}'")
+            logging.info(f"📸 Capturing FIRST visual search result image for query: '{query}'")
             logging.info(f"📸 Found {len(images)} images, using first one: {images[0]}")
             
             # Download the first image
@@ -189,7 +203,7 @@ class SandboxWebSearchTool(SandboxToolsBase):
                         image_manager = ImageManager(self.thread_manager, self.thread_id)
                         
                         # Create caption
-                        caption = f"🔍 First search result for: \"{query}\""
+                        caption = f"🔍 Visual search result for: \"{query}\""
                         logging.info(f"📸 Caption: {caption}")
                         
                         # Add screenshot to conversation
@@ -202,9 +216,9 @@ class SandboxWebSearchTool(SandboxToolsBase):
                         
                         if success:
                             self._first_search_image_captured = True
-                            logging.info("✅ Successfully added first search image to conversation!")
+                            logging.info("✅ Successfully added first visual search image to conversation!")
                         else:
-                            logging.error("❌ Failed to add first search image - add_screenshot_message returned False")
+                            logging.error("❌ Failed to add first visual search image - add_screenshot_message returned False")
                     else:
                         logging.warning(f"Failed to download image: HTTP {response.status_code}")
             except Exception as e:

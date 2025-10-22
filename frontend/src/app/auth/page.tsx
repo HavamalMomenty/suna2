@@ -139,8 +139,8 @@ function LoginContent() {
       formData.append('returnUrl', returnUrl);
     }
 
-    // Add origin for email redirects
-    formData.append('origin', process.env.NEXT_PUBLIC_URL);
+    // Add origin for email redirects - use hardcoded production domain for email flows
+    formData.append('origin', 'https://momenty.dk');
 
     const result = await signUp(prevState, formData);
 
@@ -195,7 +195,7 @@ function LoginContent() {
 
     const formData = new FormData();
     formData.append('email', forgotPasswordEmail);
-    formData.append('origin', window.location.origin);
+    formData.append('origin', 'https://momenty.dk');
 
     const result = await forgotPassword(null, formData);
 

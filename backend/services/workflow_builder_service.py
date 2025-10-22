@@ -46,6 +46,10 @@ class WorkflowBuilderService:
             'text/css',
             'text/xml',
             'application/xml',
+            'text/yaml',
+            'text/x-yaml',
+            'application/x-yaml',
+            'application/yaml',
             'application/octet-stream',  # Generic binary/unknown types
             # Programming Languages
             'text/x-python',
@@ -556,6 +560,7 @@ class WorkflowBuilderService:
                     '.html', '.htm',     # HTML
                     '.css',              # CSS
                     '.xml',              # XML
+                    '.yaml', '.yml',     # YAML
                     '.py',               # Python
                     '.pdf',              # PDF
                     '.doc', '.docx',     # Word

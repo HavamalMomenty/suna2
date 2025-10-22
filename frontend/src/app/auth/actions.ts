@@ -64,11 +64,31 @@ export async function signIn(prevState: any, formData: FormData) {
       
       // If no projects exist, create a default one
       if (!projects || projects.length === 0) {
-        const { createProject } = await import('@/lib/api');
-        await createProject({
-          name: 'My First Project',
-          description: 'Your default project to get started with workflows and conversations'
-        }, user.id);
+        try {
+          // Get the user's accounts using the RPC function
+          const { data: accounts, error: accountsError } = await supabase.rpc('get_accounts');
+          
+          if (accountsError) {
+            console.error('Error getting accounts:', accountsError);
+            return;
+          }
+
+          // Find the personal account
+          const personalAccount = accounts.find(account => account.personal_account);
+          
+          if (personalAccount) {
+            await supabase
+              .from('projects')
+              .insert({
+                name: 'My First Project',
+                description: 'Your default project to get started with workflows and conversations',
+                account_id: personalAccount.account_id,
+              });
+          }
+        } catch (projectError) {
+          console.error('Error creating default project:', projectError);
+          // Don't fail the sign in flow if project creation fails
+        }
       }
     }
   } catch (error) {
@@ -101,11 +121,16 @@ export async function signUp(prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
+  const redirectUrl = `${origin}/auth/callback?returnUrl=${returnUrl}`;
+  console.log('DEBUG: emailRedirectTo URL:', redirectUrl);
+  console.log('DEBUG: origin:', origin);
+  console.log('DEBUG: returnUrl:', returnUrl);
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?returnUrl=${returnUrl}`,
+      emailRedirectTo: 'https://momenty.dk',
     },
   });
 

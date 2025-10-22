@@ -1643,6 +1643,10 @@ async def upload_workflow_file(
             'text/css',
             'text/xml',
             'application/xml',
+            'text/yaml',
+            'text/x-yaml',
+            'application/x-yaml',
+            'application/yaml',
             'application/octet-stream',
             # Common mislabels
             'application/vnd.ms-excel',  # some browsers send CSV/XLS as this
@@ -1906,6 +1910,10 @@ async def create_workflow_from_builder_with_files(
                     'text/css',
                     'text/xml',
                     'application/xml',
+                    'text/yaml',
+                    'text/x-yaml',
+                    'application/x-yaml',
+                    'application/yaml',
                     'application/octet-stream',
                     # Common mislabels
                     'application/vnd.ms-excel',  # some browsers send CSV/XLS as this

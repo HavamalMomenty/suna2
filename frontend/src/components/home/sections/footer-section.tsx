@@ -41,6 +41,10 @@ export function FooterSection() {
           <p className="tracking-tight text-muted-foreground font-medium">
             {siteConfig.hero.description}
           </p>
+          
+          <p className="text-sm text-muted-foreground">
+            CVR: 45925374
+          </p>
 
           <div className="flex items-center gap-4">
             

@@ -9,7 +9,12 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const returnUrl = requestUrl.searchParams.get('returnUrl');
-  const origin = requestUrl.origin;
+  // Use hardcoded production domain for email authentication flows
+  const origin = 'https://momenty.dk';
+  
+  console.log('DEBUG: Callback - requestUrl.origin:', requestUrl.origin);
+  console.log('DEBUG: Callback - returnUrl:', returnUrl);
+  console.log('DEBUG: Callback - using origin:', origin);
 
   if (code) {
     const supabase = await createClient();

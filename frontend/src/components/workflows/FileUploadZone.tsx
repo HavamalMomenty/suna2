@@ -46,6 +46,10 @@ const ALLOWED_TYPES = [
   'text/css',
   'text/xml',
   'application/xml',
+  'text/yaml',
+  'text/x-yaml',
+  'application/x-yaml',
+  'application/yaml',
   'application/json',
   'text/tab-separated-values',
   'application/octet-stream',
@@ -77,7 +81,7 @@ const ALLOWED_TYPES = [
 ];
 
 const ALLOWED_EXTENSIONS = [
-  '.md', '.markdown', '.mdx', '.txt', '.csv', '.tsv', '.html', '.htm', '.css', '.xml', '.json', '.py',
+  '.md', '.markdown', '.mdx', '.txt', '.csv', '.tsv', '.html', '.htm', '.css', '.xml', '.yaml', '.yml', '.json', '.py',
   '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.ods', '.odp', '.rtf', '.tex',
   '.jpg', '.jpeg', '.png', '.svg'
 ];
@@ -198,6 +202,10 @@ export function FileUploadZone({
       'text/css': ['.css'],
       'text/xml': ['.xml'],
       'application/xml': ['.xml'],
+      'text/yaml': ['.yaml', '.yml'],
+      'text/x-yaml': ['.yaml', '.yml'],
+      'application/x-yaml': ['.yaml', '.yml'],
+      'application/yaml': ['.yaml', '.yml'],
       'application/json': ['.json'],
       'text/x-python': ['.py'],
       'application/x-python-code': ['.py'],
@@ -287,7 +295,7 @@ export function FileUploadZone({
         <Info className="h-4 w-4" />
         <AlertDescription>
           Upload supplementary files to provide additional context for your workflow.
-          Supported: MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB each).
+          Supported: MD/MDX, TXT, HTML, CSS, XML, YAML/YML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB each).
         </AlertDescription>
       </Alert>
 
@@ -317,7 +325,7 @@ export function FileUploadZone({
                     Drag & drop files here, or click to select
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    MD/MDX, TXT, HTML, CSS, XML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB)
+                    MD/MDX, TXT, HTML, CSS, XML, YAML/YML, JSON, CSV/TSV, PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, ODT/ODS/ODP, RTF, TEX, PY, JPG/JPEG, PNG, SVG (max 50MB)
                   </p>
                 </div>
               )}
