@@ -102,7 +102,7 @@ export function useVncPreloader(project: Project | null) {
       return;
     }
 
-    const vncUrl = `${project.sandbox.vnc_preview}/vnc_lite.html?password=${project.sandbox.pass}&autoconnect=true&scale=local&width=1024&height=768`;
+    const vncUrl = `${project.sandbox.vnc_preview}/vnc_lite.html?password=${project.sandbox.pass}&autoconnect=true&scale=local&width=1024&height=768&X-Daytona-Skip-Preview-Warning=true&X-Daytona-Disable-CORS=true`;
 
     // Reset retry counter for new project
     maxRetriesRef.current = 0;

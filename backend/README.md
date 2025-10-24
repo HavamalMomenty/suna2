@@ -95,7 +95,7 @@ FIRECRAWL_URL=https://api.firecrawl.dev
 
 # Agent Execution
 DAYTONA_API_KEY=your-daytona-key
-DAYTONA_SERVER_URL=https://app.daytona.io/api
+DAYTONA_SERVER_URL=https://app.eu.daytona.io/api
 DAYTONA_TARGET=us
 
 # Background Job Processing (Required)

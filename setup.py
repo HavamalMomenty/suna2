@@ -598,9 +598,9 @@ class SetupWizard:
         if not self.env_vars["daytona"]["DAYTONA_SERVER_URL"]:
             self.env_vars["daytona"][
                 "DAYTONA_SERVER_URL"
-            ] = "https://app.daytona.io/api"
+            ] = "https://app.eu.daytona.io/api"
         if not self.env_vars["daytona"]["DAYTONA_TARGET"]:
-            self.env_vars["daytona"]["DAYTONA_TARGET"] = "us"
+            self.env_vars["daytona"]["DAYTONA_TARGET"] = "eu"
 
         print_success("Daytona information saved.")
 

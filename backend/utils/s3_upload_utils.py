@@ -34,6 +34,19 @@ async def upload_base64_image(base64_data: str, bucket_name: str = "browser-scre
         # Upload to Supabase storage
         db = DBConnection()
         client = await db.client
+        
+        # Ensure bucket exists
+        try:
+            # Try to get bucket info
+            bucket_info = await client.storage.get_bucket(bucket_name)
+            if not bucket_info:
+                # Create bucket if it doesn't exist
+                logger.info(f"Creating storage bucket: {bucket_name}")
+                await client.storage.create_bucket(bucket_name, {"public": True})
+        except Exception as bucket_error:
+            logger.warning(f"Could not ensure bucket exists: {bucket_error}")
+            # Continue anyway - bucket might exist but API call failed
+        
         storage_response = await client.storage.from_(bucket_name).upload(
             filename,
             image_data,

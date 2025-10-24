@@ -161,9 +161,12 @@ export function BrowserToolView({
   const vncIframe = useMemo(() => {
     if (!vncPreviewUrl) return null;
 
+    // Add headers to disable Daytona authentication
+    const vncUrlWithHeaders = `${vncPreviewUrl}&X-Daytona-Skip-Preview-Warning=true&X-Daytona-Disable-CORS=true`;
+
     return (
       <iframe
-        src={vncPreviewUrl}
+        src={vncUrlWithHeaders}
         title="Browser preview"
         className="w-full h-full border-0 min-h-[600px]"
         style={{ width: '100%', height: '100%', minHeight: '600px' }}

@@ -95,7 +95,7 @@ def create_sandbox(password: str, project_id: str = None, user_id: str = None):
         
     params = CreateSandboxFromImageParams(
         image=Configuration.SANDBOX_IMAGE_NAME,
-        public=False,  # Make sandboxes private for security
+        public=True,  # Make sandboxes public to disable authentication
         labels=labels,
         env_vars={
             # Browser configuration
@@ -110,6 +110,11 @@ def create_sandbox(password: str, project_id: str = None, user_id: str = None):
             "CHROME_DEBUGGING_PORT": "9222",
             "CHROME_DEBUGGING_HOST": "localhost",
             "CHROME_CDP": "",
+            
+            # Disable Daytona authentication
+            "DAYTONA_DISABLE_AUTH": "true",
+            "DAYTONA_SKIP_PREVIEW_WARNING": "true",
+            "DAYTONA_DISABLE_CORS": "true",
             
             # LlamaParse configuration - pass through from host environment
             #"USE_LLAMA_PARSE": os.getenv("USE_LLAMA_PARSE", "true"),

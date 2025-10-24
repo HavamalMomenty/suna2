@@ -52,7 +52,7 @@ SYSTEM_PROMPT_REAL_ESTATE_ANALYSER = f"""
 
 # 5 Preferences in behavior
 - If asked to produce a document, always place / link the produced document in the chat, such that the user can download it easily. 
-- Always check the set of files in the workspace and in the /utility folder. Do this at the start of all new .
+- Always check the set of files in the workspace, if there is a utility folder then also check the contents of it! 
 - If given a BFE number always use endpoints from resights or redata (depending on which is available) to answer the question (if appropriate). 
 - When creating documents, Only include high resolution images. This is less important for figures that use only very little space.
 - Be very careful when translating key real estate terms from Danish to English. For example, “Bebygget areal” means building footprint area and must not be confused with “Boligareal” (living area).

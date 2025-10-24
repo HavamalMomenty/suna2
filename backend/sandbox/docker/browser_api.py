@@ -335,14 +335,132 @@ class BrowserAutomation:
             print("Playwright started, launching browser...")
             
             # Use non-headless mode for testing with slower timeouts
+            # Add authentication-related flags to prevent Auth0 connection issues
             launch_options = {
                 "headless": False,
-                "timeout": 60000
+                "timeout": 60000,
+                "args": [
+                    "--disable-web-security",
+                    "--disable-features=VizDisplayCompositor",
+                    "--disable-background-networking",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-breakpad",
+                    "--disable-component-extensions-with-background-pages",
+                    "--disable-dev-shm-usage",
+                    "--disable-extensions",
+                    "--disable-features=TranslateUI",
+                    "--disable-ipc-flooding-protection",
+                    "--disable-renderer-backgrounding",
+                    "--disable-sync",
+                    "--disable-translate",
+                    "--disable-web-resources",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--disable-default-apps",
+                    "--disable-client-side-phishing-detection",
+                    "--disable-component-update",
+                    "--disable-domain-reliability",
+                    "--disable-features=AudioServiceOutOfProcess",
+                    "--disable-hang-monitor",
+                    "--disable-prompt-on-repost",
+                    "--safebrowsing-disable-auto-update",
+                    "--hide-scrollbars",
+                    "--mute-audio",
+                    "--metrics-recording-only",
+                    "--enable-features=NetworkServiceInProcess2",
+                    "--force-color-profile=srgb"
+                ]
             }
             
             try:
                 self.browser = await playwright.chromium.launch(**launch_options)
-                self.browser_context = await self.browser.new_context(viewport={'width': 1024, 'height': 768})
+                
+                # Create browser context with proper authentication configuration
+                context_options = {
+                    'viewport': {'width': 1024, 'height': 768},
+                    'ignore_https_errors': True,
+                    'bypass_csp': True,
+                    'user_agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'extra_http_headers': {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                    },
+                    # Add authentication configuration to prevent Auth0 connection issues
+                    'http_credentials': None,  # Disable automatic authentication
+                    'ignore_https_errors': True,  # Ignore SSL errors that might cause auth issues
+                    # Add network configuration to prevent external auth attempts
+                    'proxy': None,  # Disable proxy that might interfere with auth
+                    'locale': 'en-US',  # Set locale to prevent region-specific auth redirects
+                    'timezone_id': 'UTC',  # Set timezone to prevent time-based auth issues
+                    # Add request interception to block Auth0 requests
+                    'request_interception': True,
+                }
+                
+                self.browser_context = await self.browser.new_context(**context_options)
+                
+                # Add request interception to block Auth0 requests
+                async def handle_request(request):
+                    url = request.url
+                    method = request.method
+                    print(f"🌐 Browser {method} request to: {url}")  # Log all requests with method
+                    
+                    # Check for any Daytona or Auth0 related requests
+                    if any(domain in url for domain in ['daytonaio.us', 'daytonaio.eu', 'auth0.com', 'daytona.works', 'proxy.daytona.works']):
+                        print(f"🚫 BLOCKING Daytona/Auth0 request to: {url}")
+                        await request.abort()
+                    else:
+                        await request.continue_()
+                
+                # Set up request interception
+                await self.browser_context.route("**/*", handle_request)
+                
+                # Add response interception to catch authentication redirects
+                async def handle_response(response):
+                    url = response.url
+                    status = response.status
+                    if status >= 300 and status < 400:  # Redirect responses
+                        print(f"🔄 Redirect response {status} from: {url}")
+                        try:
+                            location = response.headers.get('location', '')
+                            if location:
+                                print(f"🔄 Redirecting to: {location}")
+                                if any(domain in location for domain in ['daytonaio.us', 'daytonaio.eu', 'auth0.com', 'daytona.works', 'proxy.daytona.works']):
+                                    print(f"🚫 BLOCKING redirect to Daytona/Auth0: {location}")
+                        except:
+                            pass
+                
+                # Set up response interception
+                self.browser_context.on("response", handle_response)
+                
+                # Add console logging to catch JavaScript errors
+                async def handle_console(msg):
+                    if msg.type in ['error', 'warning']:
+                        print(f"🚨 Browser console {msg.type}: {msg.text}")
+                
+                # Set up console logging
+                self.browser_context.on("console", handle_console)
+                
+                # Add page error logging to catch any JavaScript errors
+                async def handle_page_error(error):
+                    print(f"🚨 Page error: {error}")
+                
+                # Set up page error logging
+                self.browser_context.on("page", lambda page: page.on("pageerror", handle_page_error))
+                
+                # Add network error logging to catch any network issues
+                async def handle_network_error(error):
+                    print(f"🚨 Network error: {error}")
+                
+                # Set up network error logging
+                self.browser_context.on("page", lambda page: page.on("requestfailed", handle_network_error))
+                
                 print("Browser launched successfully")
             except Exception as browser_error:
                 print(f"Failed to launch browser: {browser_error}")

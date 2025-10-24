@@ -697,71 +697,84 @@ Here are the XML tools available with examples:
         async def auto_continue_wrapper():
             nonlocal auto_continue, auto_continue_count
 
-            while auto_continue and (native_max_auto_continues == 0 or auto_continue_count < native_max_auto_continues):
-                # Reset auto_continue for this iteration
-                auto_continue = False
+            try:
+                while auto_continue and (native_max_auto_continues == 0 or auto_continue_count < native_max_auto_continues):
+                    # Reset auto_continue for this iteration
+                    auto_continue = False
 
-                # Run the thread once, passing the potentially modified system prompt
-                # Pass temp_msg only on the first iteration
-                try:
-                    response_gen = await _run_once(temporary_message if auto_continue_count == 0 else None)
-
-                    # Handle error responses
-                    if isinstance(response_gen, dict) and "status" in response_gen and response_gen["status"] == "error":
-                        logger.error(f"Error in auto_continue_wrapper: {response_gen.get('message', 'Unknown error')}")
-                        yield response_gen
-                        return  # Exit the generator on error
-
-                    # Process each chunk
+                    # Run the thread once, passing the potentially modified system prompt
+                    # Pass temp_msg only on the first iteration
                     try:
-                        async for chunk in response_gen:
-                            # Check if this is a finish reason chunk with tool_calls or xml_tool_limit_reached
-                            if chunk.get('type') == 'finish':
-                                if chunk.get('finish_reason') == 'tool_calls':
-                                    # Only auto-continue if enabled (max > 0)
-                                    if native_max_auto_continues > 0:
-                                        logger.info(f"Detected finish_reason='tool_calls', auto-continuing ({auto_continue_count + 1}/{native_max_auto_continues})")
-                                        auto_continue = True
-                                        auto_continue_count += 1
-                                        # Don't yield the finish chunk to avoid confusing the client
-                                        continue
-                                elif chunk.get('finish_reason') == 'xml_tool_limit_reached':
-                                    # Don't auto-continue if XML tool limit was reached
-                                    logger.info(f"Detected finish_reason='xml_tool_limit_reached', stopping auto-continue")
-                                    auto_continue = False
-                                    # Still yield the chunk to inform the client
+                        response_gen = await _run_once(temporary_message if auto_continue_count == 0 else None)
 
-                            # Otherwise just yield the chunk normally
-                            yield chunk
+                        # Handle error responses
+                        if isinstance(response_gen, dict) and "status" in response_gen and response_gen["status"] == "error":
+                            logger.error(f"Error in auto_continue_wrapper: {response_gen.get('message', 'Unknown error')}")
+                            yield response_gen
+                            return  # Exit the generator on error
 
-                        # If not auto-continuing, we're done
-                        if not auto_continue:
-                            break
-                    except Exception as e:
-                        # If there's an exception, log it, yield an error status, and stop execution
-                        logger.error(f"Error in auto_continue_wrapper generator: {str(e)}", exc_info=True)
+                        # Process each chunk
+                        try:
+                            async for chunk in response_gen:
+                                # Check if this is a finish reason chunk with tool_calls or xml_tool_limit_reached
+                                if chunk.get('type') == 'finish':
+                                    if chunk.get('finish_reason') == 'tool_calls':
+                                        # Only auto-continue if enabled (max > 0)
+                                        if native_max_auto_continues > 0:
+                                            logger.info(f"Detected finish_reason='tool_calls', auto-continuing ({auto_continue_count + 1}/{native_max_auto_continues})")
+                                            auto_continue = True
+                                            auto_continue_count += 1
+                                            # Don't yield the finish chunk to avoid confusing the client
+                                            continue
+                                    elif chunk.get('finish_reason') == 'xml_tool_limit_reached':
+                                        # Don't auto-continue if XML tool limit was reached
+                                        logger.info(f"Detected finish_reason='xml_tool_limit_reached', stopping auto-continue")
+                                        auto_continue = False
+                                        # Still yield the chunk to inform the client
+
+                                # Otherwise just yield the chunk normally
+                                yield chunk
+
+                            # If not auto-continuing, we're done
+                            if not auto_continue:
+                                break
+                        except Exception as e:
+                            # If there's an exception, log it, yield an error status, and stop execution
+                            logger.error(f"Error in auto_continue_wrapper generator: {str(e)}", exc_info=True)
+                            yield {
+                                "type": "status",
+                                "status": "error",
+                                "message": f"Error in thread processing: {str(e)}"
+                            }
+                            return  # Exit the generator on any error
+                    except Exception as outer_e:
+                        # Catch exceptions from _run_once itself
+                        logger.error(f"Error executing thread: {str(outer_e)}", exc_info=True)
                         yield {
                             "type": "status",
                             "status": "error",
-                            "message": f"Error in thread processing: {str(e)}"
+                            "message": f"Error executing thread: {str(outer_e)}"
                         }
-                        return  # Exit the generator on any error
-                except Exception as outer_e:
-                    # Catch exceptions from _run_once itself
-                    logger.error(f"Error executing thread: {str(outer_e)}", exc_info=True)
-                    yield {
-                        "type": "status",
-                        "status": "error",
-                        "message": f"Error executing thread: {str(outer_e)}"
-                    }
-                    return  # Exit immediately on exception from _run_once
+                        return  # Exit immediately on exception from _run_once
 
-            # If we've reached the max auto-continues, log a warning
-            if auto_continue and auto_continue_count >= native_max_auto_continues:
-                logger.warning(f"Reached maximum auto-continue limit ({native_max_auto_continues}), stopping.")
+                # If we've reached the max auto-continues, log a warning
+                if auto_continue and auto_continue_count >= native_max_auto_continues:
+                    logger.warning(f"Reached maximum auto-continue limit ({native_max_auto_continues}), stopping.")
+                    yield {
+                        "type": "content",
+                        "content": f"\n[Agent reached maximum auto-continue limit of {native_max_auto_continues}]"
+                    }
+            except GeneratorExit:
+                # Handle generator cancellation gracefully
+                logger.debug("Async generator cancelled (GeneratorExit)")
+                return
+            except Exception as e:
+                # Handle any other unexpected exceptions
+                logger.error(f"Unexpected error in auto_continue_wrapper: {str(e)}", exc_info=True)
                 yield {
-                    "type": "content",
-                    "content": f"\n[Agent reached maximum auto-continue limit of {native_max_auto_continues}]"
+                    "type": "status",
+                    "status": "error",
+                    "message": f"Unexpected error in thread processing: {str(e)}"
                 }
 
         # If auto-continue is disabled (max=0), just run once
