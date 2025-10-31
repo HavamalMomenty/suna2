@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from utils.config import config, EnvMode
 import asyncio
 from utils.logger import logger, structlog
+from utils.auth_utils import get_optional_user_id
+from services.bootstrap import bootstrap_user
 import time
 from collections import OrderedDict
 from typing import Dict, Any
@@ -28,6 +30,7 @@ from sandbox import api as sandbox_api
 from services import billing as billing_api
 from flags import api as feature_flags_api
 from services import transcription as transcription_api
+from services import bootstrap as bootstrap_api
 from services.mcp_custom import discover_custom_tools
 import sys
 from services import email_api
@@ -130,6 +133,16 @@ async def log_requests_middleware(request: Request, call_next):
     logger.info(f"Request started: {method} {path} from {client_ip} | Query: {query_params}")
     
     try:
+        # After authentication: run bootstrap copy logic idempotently
+        try:
+            user_id_opt = await get_optional_user_id(request)
+            if user_id_opt:
+                # Call bootstrap directly to perform per-user setup/copy
+                await bootstrap_user(request, user_id=user_id_opt)
+        except Exception as _e:
+            # Do not block the request on bootstrap issues
+            logger.debug(f"Bootstrap skipped or failed quietly: {_e}")
+
         response = await call_next(request)
         process_time = time.time() - start_time
         logger.debug(f"Request completed: {method} {path} | Status: {response.status_code} | Time: {process_time:.2f}s")
@@ -174,6 +187,8 @@ app.include_router(secure_mcp_api.router, prefix="/api/secure-mcp")
 
 app.include_router(transcription_api.router, prefix="/api")
 app.include_router(email_api.router, prefix="/api")
+bootstrap_api.initialize(db)
+app.include_router(bootstrap_api.router, prefix="/api")
 
 from workflows import api as workflows_api
 workflows_api.initialize(db)

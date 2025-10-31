@@ -163,6 +163,19 @@ export const getAgents = async (params: AgentsParams = {}): Promise<AgentsRespon
     });
 
     if (!response.ok) {
+      // Handle 403 (feature disabled) gracefully
+      if (response.status === 403) {
+        console.warn('Agents feature is disabled or not accessible');
+        return {
+          agents: [],
+          pagination: {
+            page: 1,
+            limit: params.limit || 20,
+            total: 0,
+            pages: 0
+          }
+        };
+      }
       const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
       throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }

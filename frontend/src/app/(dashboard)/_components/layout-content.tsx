@@ -17,6 +17,8 @@ import { VSentry } from '@/components/sentry';
 import type { IMaintenanceNotice } from '@/lib/edge-flags';
 import { MaintenanceNotice } from './maintenance-notice';
 import { MaintenanceBanner } from './maintenance-banner';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
+import { useBootstrap } from '@/hooks/use-bootstrap';
 
 interface DashboardLayoutContentProps {
   children: React.ReactNode;
@@ -35,6 +37,7 @@ export default function DashboardLayoutContent({
   const personalAccount = accounts?.find((account) => account.personal_account);
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { isChecking: isBootstrapChecking, isCopying: isBootstrapCopying, loadingMessage: bootstrapMessage } = useBootstrap();
 
   useEffect(() => {
     // setShowPricingAlert(false)
@@ -94,8 +97,8 @@ export default function DashboardLayoutContent({
     );
   }
 
-  // Show loading state while checking auth or health
-  if (isLoading || isCheckingHealth) {
+  // Show loading state while checking auth, health, or bootstrap
+  if (isLoading || isCheckingHealth || isBootstrapChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -115,6 +118,10 @@ export default function DashboardLayoutContent({
 
   return (
     <DeleteOperationProvider>
+      <LoadingOverlay 
+        isVisible={isBootstrapCopying} 
+        message={bootstrapMessage}
+      />
       <SidebarProvider style={{ minHeight: 'auto' }}>
         <SidebarLeft />
         <SidebarInset>

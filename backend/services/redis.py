@@ -12,7 +12,7 @@ _initialized = False
 _init_lock = asyncio.Lock()
 
 # Constants
-REDIS_KEY_TTL = 3600 * 24  # 24 hour TTL as safety mechanism
+REDIS_KEY_TTL = 7200  # 2 hour TTL for active runs
 
 
 def initialize():
@@ -125,7 +125,20 @@ async def create_pubsub():
 async def rpush(key: str, *values: Any):
     """Append one or more values to a list."""
     redis_client = await get_client()
-    return await redis_client.rpush(key, *values)
+    result = await redis_client.rpush(key, *values)
+    
+    # Auto-set TTL for response lists to prevent memory leaks
+    if ":responses" in key:
+        try:
+            # Check if TTL is already set
+            ttl = await redis_client.ttl(key)
+            if ttl == -1:  # No TTL set
+                await redis_client.expire(key, REDIS_KEY_TTL)
+                logger.debug(f"Set TTL on response list: {key}")
+        except Exception as e:
+            logger.warning(f"Failed to set TTL on response list {key}: {e}")
+    
+    return result
 
 
 async def lrange(key: str, start: int, end: int) -> List[str]:

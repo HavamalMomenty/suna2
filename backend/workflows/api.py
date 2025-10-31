@@ -31,6 +31,9 @@ from scheduling.models import (
 from webhooks.providers import TelegramWebhookProvider
 # Feature flag import removed - workflows always enabled
 
+# Import builder service early for reuse in copy logic
+from services.workflow_builder_service import get_workflow_builder_service, WorkflowBuilderService
+
 router = APIRouter()
 
 
@@ -305,7 +308,8 @@ async def toggle_workflow_default_status(
 async def copy_workflow(
     workflow_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt),
-    x_project_id: Optional[str] = Header(None)
+    x_project_id: Optional[str] = Header(None),
+    service: WorkflowBuilderService = Depends(get_workflow_builder_service)
 ):
     """Copy a workflow (default or user's own) to create a custom version."""
     try:
@@ -337,7 +341,8 @@ async def copy_workflow(
         
         # Create the copied workflow with unique name handling
         original_name = source_workflow['name']
-        base_name = f"{original_name} (Custom)"
+        # Keep original name; ensure uniqueness without adding a suffix like "(Custom)"
+        base_name = original_name
         
         # Find a unique name by trying different numbers (use the same project_id as the copy)
         copied_name = await _find_unique_workflow_name(client, base_name, x_project_id)
@@ -364,24 +369,58 @@ async def copy_workflow(
         copied_workflow = result.data[0]
         copied_workflow_id = copied_workflow['id']
         
-        # Copy workflow files if they exist
+        # Copy workflow files if they exist (deep copy storage blobs to ensure independence)
         try:
             files_result = await client.table('workflow_files').select('*').eq('workflow_id', workflow_id).execute()
             if files_result.data:
                 # Copy each file to the new workflow
+                copied_count = 0
                 for file_data in files_result.data:
-                    # Create new file record for the copied workflow
-                    new_file_data = {
-                        'workflow_id': copied_workflow_id,
-                        'filename': file_data['filename'],
-                        'file_path': file_data['file_path'],  # Same file path in storage
-                        'file_size': file_data['file_size'],
-                        'file_type': file_data['file_type'],
-                        'mime_type': file_data['mime_type'],
-                        'created_by': user_id
-                    }
-                    await client.table('workflow_files').insert(new_file_data).execute()
-                logger.info(f"Copied {len(files_result.data)} files to workflow {copied_workflow_id}")
+                    try:
+                        source_path = file_data.get('file_path')
+                        filename = file_data.get('filename') or 'file'
+                        mime_type = file_data.get('mime_type') or 'application/octet-stream'
+
+                        # Derive extension from original filename (preferred) or from path
+                        ext = ''
+                        if '.' in filename:
+                            ext = f".{filename.split('.')[-1]}"
+                        elif source_path and '.' in source_path:
+                            ext = f".{source_path.split('.')[-1]}"
+
+                        # Create new storage path under new workflow
+                        new_file_id = str(uuid.uuid4())
+                        dest_path = f"{user_id}/{copied_workflow_id}/{new_file_id}{ext}"
+
+                        # Download source blob and re-upload to destination
+                        blob = service.supabase.storage.from_(service.bucket_name).download(source_path)
+                        if not blob:
+                            logger.warning(f"Skipping file copy - source blob missing at {source_path}")
+                            continue
+
+                        service.supabase.storage.from_(service.bucket_name).upload(
+                            dest_path,
+                            blob,
+                            {"content-type": mime_type, "upsert": "true"}
+                        )
+
+                        # Insert new DB row pointing to the new blob
+                        new_file_data = {
+                            'id': new_file_id,
+                            'workflow_id': copied_workflow_id,
+                            'filename': filename,
+                            'file_path': dest_path,
+                            'file_size': len(blob),
+                            'file_type': file_data.get('file_type') or (ext.replace('.', '') or 'unknown'),
+                            'mime_type': mime_type,
+                            'created_by': user_id
+                        }
+                        await client.table('workflow_files').insert(new_file_data).execute()
+                        copied_count += 1
+                    except Exception as file_copy_err:
+                        logger.warning(f"Failed to copy file {file_data.get('id')} to workflow {copied_workflow_id}: {file_copy_err}")
+
+                logger.info(f"Copied {copied_count} of {len(files_result.data)} files to workflow {copied_workflow_id}")
         except Exception as e:
             logger.warning(f"Failed to copy workflow files: {e}")
             # Continue anyway - the workflow copy succeeded

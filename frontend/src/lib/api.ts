@@ -1952,16 +1952,15 @@ export const getSubscription = async (): Promise<SubscriptionStatus> => {
     });
 
     if (!response.ok) {
-      const errorText = await response
-        .text()
-        .catch(() => 'No error details available');
-      console.error(
-        `Error getting subscription: ${response.status} ${response.statusText}`,
-        errorText,
-      );
-      throw new Error(
-        `Error getting subscription: ${response.statusText} (${response.status})`,
-      );
+      // Subscription/billing has been removed - suppress error
+      console.warn('Billing endpoint not available (subscription removed)');
+      return {
+        status: 'active',
+        plan_name: 'Free Plan',
+        price_id: 'free',
+        cancel_at_period_end: false,
+        has_schedule: false,
+      };
     }
 
     return response.json();
@@ -1970,9 +1969,15 @@ export const getSubscription = async (): Promise<SubscriptionStatus> => {
       throw error;
     }
 
-    console.error('Failed to get subscription:', error);
-    handleApiError(error, { operation: 'load subscription', resource: 'billing information' });
-    throw error;
+    // Subscription/billing has been removed - suppress error
+    console.warn('Error loading subscription (subscription removed):', error);
+    return {
+      status: 'active',
+      plan_name: 'Free Plan',
+      price_id: 'free',
+      cancel_at_period_end: false,
+      has_schedule: false,
+    };
   }
 };
 
