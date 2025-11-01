@@ -69,8 +69,24 @@ export function useBootstrap() {
         if (response.ok) {
           const data: BootstrapStatus = await response.json();
 
+          // If copying_in_progress is false AND total_templates is 0 or undefined,
+          // it means bootstrap was already completed (user already has workflows)
+          // The backend returns total_templates: 0 when it detects workflows already exist
+          const alreadyCompleted = !data.copying_in_progress && 
+                                  (data.total_templates === 0 || data.total_templates === undefined);
+
           // Check if workflows need to be copied
           const needsCopying = data.total_templates > 0 && data.workflows_copied < data.total_templates;
+
+          if (alreadyCompleted) {
+            // Bootstrap already completed - no workflows to copy (user already has workflows)
+            if (mounted && !workflowsComplete) {
+              setIsCopying(false);
+              setIsChecking(false);
+              workflowsComplete = true;
+            }
+            return;
+          }
 
           if (needsCopying || data.copying_in_progress) {
             setIsCopying(true);
@@ -88,7 +104,7 @@ export function useBootstrap() {
               setProgress(50);
             }
           } else {
-            // All workflows are copied or no templates to copy
+            // All workflows are copied (first time setup complete)
             if (mounted && isCopying) {
               // Give it a brief moment for workflows to appear in the UI
               setLoadingMessage('Finalizing setup...');

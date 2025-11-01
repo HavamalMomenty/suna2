@@ -54,7 +54,30 @@ async def bootstrap_user(
 
         workflows_copied = 0
         
-        # Fetch all default/template workflows once
+        # EARLY CHECK: First check if user already has any workflows - if so, skip entirely
+        # This ensures bootstrap only runs once per account
+        user_workflows_check_query = client.table('workflows').select('id').eq('created_by', user_id).eq('default_workflow', False).limit(1)
+        if project_id:
+            user_workflows_check_query = user_workflows_check_query.eq('project_id', project_id)
+        else:
+            user_workflows_check_query = user_workflows_check_query.is_('project_id', 'null')
+        
+        user_workflows_check_result = await user_workflows_check_query.execute()
+        
+        # If user already has workflows, skip workflow copying entirely (this is not the first time)
+        if user_workflows_check_result.data and len(user_workflows_check_result.data) > 0:
+            logger.info("User already has workflows - bootstrap already completed, skipping", user_id=user_id)
+            return {
+                "status": "ok",
+                "project_created": project_created,
+                "project_id": project_id,
+                "workflows_copied": 0,
+                "workflows_skipped": 0,
+                "total_templates": 0,
+                "copying_in_progress": False,
+            }
+        
+        # Fetch all default/template workflows once (only if user has no workflows yet)
         default_result = await client.table("workflows").select("*").eq("default_workflow", True).execute()
         default_workflows = default_result.data or []
         
@@ -66,6 +89,8 @@ async def bootstrap_user(
                 "project_id": project_id,
                 "workflows_copied": 0,
                 "workflows_skipped": 0,
+                "total_templates": 0,
+                "copying_in_progress": False,
             }
         
         # OPTIMIZATION: Batch fetch all user's existing workflows for this project in one query
