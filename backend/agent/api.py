@@ -25,6 +25,7 @@ from services.llm import make_llm_api_call
 from run_agent_background import run_agent_background, _cleanup_redis_response_list, update_agent_run_status
 from utils.constants import MODEL_NAME_ALIASES
 from flags.flags import is_enabled
+from services.workflow_builder_service import WORKFLOW_FILES_BUCKET
 
 # Initialize shared resources
 router = APIRouter()
@@ -991,7 +992,7 @@ async def upload_workflow_template_files(sandbox, workflow_id: str, user_id: str
                 file_path = file_data['file_path']
                 logger.info(f"Bjarke logs: Found filepath {file_path} for file {filename}")
                 # Download file content from storage
-                file_response = await supabase.storage.from_('workflow-files').download(file_path)
+                file_response = await supabase.storage.from_(WORKFLOW_FILES_BUCKET).download(file_path)
                 if not file_response:
                     logger.error(f"Failed to download file {filename} from storage")
                     continue
@@ -1237,7 +1238,7 @@ async def initiate_agent_with_files(
                             logger.info(f"Downloading workflow template file: {filename}")
                             
                             # Download file content from storage
-                            file_response = await client.storage.from_('workflow-files').download(file_path)
+                            file_response = await client.storage.from_(WORKFLOW_FILES_BUCKET).download(file_path)
                             if not file_response:
                                 logger.error(f"Failed to download file {filename} from storage")
                                 continue

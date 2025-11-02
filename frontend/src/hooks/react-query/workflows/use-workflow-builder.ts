@@ -404,6 +404,13 @@ export function useWorkflowBuilderData(workflowId: string | undefined) {
     queryKey: workflowKeys.builderData(workflowId!),
     queryFn: () => getWorkflowBuilderData(workflowId!),
     enabled: !!workflowId,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 403/404 errors (workflow not found or access denied)
+      if (error?.message?.includes('403') || error?.message?.includes('404')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 }
 
@@ -437,8 +444,12 @@ export function useDeleteWorkflow() {
   
   return useMutation({
     mutationFn: deleteWorkflow,
-    onSuccess: () => {
+    onSuccess: (_, workflowId) => {
+      // Invalidate all workflow queries
       queryClient.invalidateQueries({ queryKey: workflowKeys.all });
+      // Also specifically remove any cached builder data for this workflow
+      queryClient.removeQueries({ queryKey: workflowKeys.builderData(workflowId) });
+      queryClient.removeQueries({ queryKey: workflowKeys.files(workflowId) });
       toast.success('Workflow deleted successfully');
     },
     onError: (error: Error) => {

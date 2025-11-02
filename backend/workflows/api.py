@@ -682,31 +682,6 @@ async def update_workflow(
         logger.error(f"Error updating workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/workflows/{workflow_id}")
-async def delete_workflow(
-    workflow_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    """Delete a workflow."""
-    try:
-        client = await db.client
-
-        existing = await client.table('workflows').select('id').eq('id', workflow_id).eq('created_by', user_id).execute()
-        if not existing.data:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-
-        await workflow_scheduler.unschedule_workflow(workflow_id)
-        
-        await client.table('workflows').delete().eq('id', workflow_id).execute()
-        
-        return {"message": "Workflow deleted successfully"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting workflow: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("/workflows/{workflow_id}/execute")
 async def execute_workflow(
     workflow_id: str,
@@ -1780,6 +1755,10 @@ async def delete_workflow(
     """Delete a workflow and all associated files."""
     
     try:
+        # Unschedule the workflow before deletion
+        await workflow_scheduler.unschedule_workflow(workflow_id)
+        
+        # Delete the workflow and all associated files
         await service.delete_workflow(workflow_id, user_id)
         return {"message": "Workflow deleted successfully"}
         

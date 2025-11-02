@@ -10,6 +10,7 @@ from services.supabase import DBConnection
 from utils.logger import logger
 from dataclasses import dataclass
 from enum import Enum
+from services.workflow_builder_service import WORKFLOW_FILES_BUCKET
 
 class NodeType(Enum):
     INPUT = "inputNode"
@@ -1645,7 +1646,7 @@ INSTRUCTIONS:
                     supabase = await self.db.client
                     
                     # Get file from storage
-                    file_response = await supabase.storage.from_('workflow-files').download(file_path)
+                    file_response = await supabase.storage.from_(WORKFLOW_FILES_BUCKET).download(file_path)
                     if not file_response:
                         logger.error(f"Failed to download file {filename} from storage")
                         continue

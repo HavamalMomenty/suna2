@@ -21,6 +21,9 @@ from workflows.models import (
 )
 from utils.logger import logger
 
+# Storage bucket name for workflow files - keep in sync with migrations
+WORKFLOW_FILES_BUCKET = "workflow-files"
+
 
 class WorkflowBuilderService:
     """Service for managing workflow builder operations."""
@@ -31,7 +34,7 @@ class WorkflowBuilderService:
             os.getenv("SUPABASE_URL"),
             os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         )
-        self.bucket_name = "workflow-files"
+        self.bucket_name = WORKFLOW_FILES_BUCKET
         
         # Ensure bucket exists
         self._ensure_bucket_exists()
@@ -357,10 +360,25 @@ class WorkflowBuilderService:
                 "created_by": user_id
             }
             
-            db_result = self.supabase.table("workflow_files").insert(file_record).execute()
-            
-            if not db_result.data:
-                raise Exception("Failed to create file record")
+            try:
+                db_result = self.supabase.table("workflow_files").insert(file_record).execute()
+                
+                if not db_result.data:
+                    # Database insert failed - cleanup orphaned storage file
+                    logger.error(f"Failed to create file record for {storage_path}, cleaning up storage file")
+                    try:
+                        self.supabase.storage.from_(self.bucket_name).remove([storage_path])
+                    except Exception as cleanup_error:
+                        logger.warning(f"Failed to cleanup orphaned storage file {storage_path}: {cleanup_error}")
+                    raise Exception("Failed to create file record")
+            except Exception as db_error:
+                # If DB insert fails, try to cleanup the storage file we just uploaded
+                logger.error(f"Database insert failed for {storage_path}, attempting cleanup: {db_error}")
+                try:
+                    self.supabase.storage.from_(self.bucket_name).remove([storage_path])
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup orphaned storage file {storage_path}: {cleanup_error}")
+                raise
             
             # Map database result to WorkflowFile model
             db_file = db_result.data[0]
@@ -408,7 +426,10 @@ class WorkflowBuilderService:
             # Delete from storage (Supabase Python SDK may return a list or an object)
             storage_result = self.supabase.storage.from_(self.bucket_name).remove([file_data["file_path"]])
             
-            # Handle different return shapes gracefully
+            # Check if storage deletion was successful
+            storage_deletion_failed = False
+            storage_error_message = None
+            
             try:
                 possible_error = getattr(storage_result, 'error', None)
             except Exception:
@@ -417,12 +438,22 @@ class WorkflowBuilderService:
             if isinstance(storage_result, list):
                 for item in storage_result:
                     if isinstance(item, dict) and item.get('error'):
-                        logger.warning(f"Failed to delete file from storage: {item.get('error')}")
+                        storage_deletion_failed = True
+                        storage_error_message = str(item.get('error'))
+                        logger.error(f"Failed to delete file from storage: {item.get('error')}")
                         break
             elif possible_error:
-                logger.warning(f"Failed to delete file from storage: {possible_error}")
+                storage_deletion_failed = True
+                storage_error_message = str(possible_error)
+                logger.error(f"Failed to delete file from storage: {possible_error}")
             
-            # Delete database record
+            # Only delete database record if storage deletion succeeded
+            # This prevents orphaned DB records pointing to non-existent storage files
+            if storage_deletion_failed:
+                logger.warning(f"Storage deletion failed for file {file_id} at {file_data['file_path']}, keeping DB record to maintain consistency")
+                raise Exception(f"Failed to delete file from storage: {storage_error_message}. Database record preserved to prevent data inconsistency.")
+            
+            # Delete database record only after successful storage deletion
             self.supabase.table("workflow_files").delete().eq("id", file_id).execute()
             
             logger.info(f"File deleted successfully: {file_id}")
@@ -449,15 +480,39 @@ class WorkflowBuilderService:
             ).eq("workflow_id", workflow_id).execute()
             
             # Delete files from storage
+            failed_deletions = []
             if files_result.data:
                 file_paths = [file_data["file_path"] for file_data in files_result.data]
                 storage_result = self.supabase.storage.from_(self.bucket_name).remove(file_paths)
                 
-                if hasattr(storage_result, 'error') and storage_result.error:
-                    logger.warning(f"Failed to delete some files from storage: {storage_result.error}")
+                # Check for failures - Supabase may return a list or object
+                storage_deletion_errors = []
+                try:
+                    possible_error = getattr(storage_result, 'error', None)
+                except Exception:
+                    possible_error = None
+                
+                if isinstance(storage_result, list):
+                    for i, item in enumerate(storage_result):
+                        if isinstance(item, dict) and item.get('error'):
+                            storage_deletion_errors.append(f"File {file_paths[i]}: {item.get('error')}")
+                            failed_deletions.append(file_paths[i])
+                elif possible_error:
+                    storage_deletion_errors.append(str(possible_error))
+                    failed_deletions = file_paths  # If it's an object error, assume all failed
+                
+                if storage_deletion_errors:
+                    logger.warning(f"Failed to delete some files from storage: {', '.join(storage_deletion_errors)}")
+                    # Continue with deletion - some files may have been deleted successfully
+                    # We'll clean up DB records regardless to prevent orphaned records
             
             # Delete workflow files from database (CASCADE will handle this, but explicit is better)
+            # Note: We delete DB records even if some storage deletions failed to prevent orphaned DB records
+            # The storage cleanup can be done manually later if needed
             self.supabase.table("workflow_files").delete().eq("workflow_id", workflow_id).execute()
+            
+            if failed_deletions:
+                logger.warning(f"Workflow {workflow_id} deleted, but {len(failed_deletions)} storage file(s) may still exist: {failed_deletions}")
             
             # Delete the workflow itself
             workflow_result = self.supabase.table("workflows").delete().eq(
@@ -619,16 +674,37 @@ class WorkflowBuilderService:
             file_path = file_record["file_path"]
             
             # Get file content from Supabase Storage
-            file_content = self.supabase.storage.from_("workflow-files").download(file_path)
+            file_content = self.supabase.storage.from_(self.bucket_name).download(file_path)
             
             if not file_content:
-                raise ValueError(f"File content not found for {file_path}")
+                # File exists in database but not in storage - this indicates data inconsistency
+                error_msg = f"File content not found in storage for path {file_path} (file_id: {file_id}, workflow_id: {workflow_id}). This indicates a data inconsistency - file record exists but storage file is missing."
+                logger.error(error_msg)
+                
+                # Optionally clean up the orphaned DB record
+                # This helps prevent accumulation of broken file references
+                try:
+                    logger.info(f"Attempting to clean up orphaned DB record for file {file_id}")
+                    self.supabase.table("workflow_files").delete().eq("id", file_id).execute()
+                    logger.info(f"Cleaned up orphaned DB record for file {file_id}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup orphaned DB record for file {file_id}: {cleanup_error}")
+                
+                raise ValueError(f"File content not found in storage for {file_path}. The file may have been deleted from storage but the database record remains. The orphaned database record has been cleaned up.")
             
             return file_content
             
         except Exception as e:
             logger.error(f"Error getting file content: {e}")
             raise e
+    
+    async def validate_file_exists(self, file_path: str) -> bool:
+        """Validate that a file exists in storage."""
+        try:
+            file_content = self.supabase.storage.from_(self.bucket_name).download(file_path)
+            return file_content is not None
+        except Exception:
+            return False
 
 
     def _map_db_to_workflow_definition(self, data: dict) -> WorkflowDefinition:
